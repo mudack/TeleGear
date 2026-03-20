@@ -13,3 +13,7 @@ TMessagesProj_App/afat/
 TMessagesProj_AppHockeyApp/afat/
 TMessagesProj_AppStandalone/afat/
 TMessagesProj_AppHuawei/afat/
+/TMessagesProj/src/main/compiledJniLibs/arm64-v8a/libtmessages.49.so
+/TMessagesProj/src/main/compiledJniLibs/x86/libtmessages.49.so
+/TMessagesProj/src/main/compiledJniLibs/armeabi-v7a/libtmessages.49.so
+/TMessagesProj/src/main/compiledJniLibs/x86_64/libtmessages.49.so

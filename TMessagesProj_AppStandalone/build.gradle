@@ -28,7 +28,12 @@ android {
 
     defaultConfig.applicationId = APP_PACKAGE
 
-    sourceSets.main.jniLibs.srcDirs = ['../TMessagesProj/jni/']
+    def buildNative = project.hasProperty('buildNative') && project.getProperty('buildNative') == "true"
+    if (buildNative) {
+        sourceSets.main.jniLibs.srcDirs = ['../TMessagesProj/jni/']
+    } else {
+        sourceSets.main.jniLibs.srcDirs = ['../TMessagesProj/src/main/compiledJniLibs/']
+    }
 
     lintOptions {
         disable 'MissingTranslation'
