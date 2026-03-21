@@ -69,6 +69,9 @@ dependencies {
     implementation 'com.google.android.recaptcha:recaptcha:18.7.1'
 
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+
+    // debugImplementation because LeakCanary should only run in debug builds.
+    debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.14'
 }
 
 def isWindows = String.valueOf(DefaultNativePlatform.currentOperatingSystem.toFamilyName() == OperatingSystemFamily.WINDOWS)
@@ -84,9 +87,28 @@ android {
         sourceSets.main.jniLibs.srcDirs = ['./src/main/compiledJniLibs/']
     }
 
+    if (!buildNative) {
+        clean {
+            doFirst {
+                def currentFiles = []
+                delete.each { currentFiles.add(it) }
+
+                def filteredFiles = currentFiles.findAll { file ->
+                    def path = file.toString()
+                    !(path.contains(".cxx") || path.contains("cmake") || path.contains("cxx"))
+                }
+
+                setDelete(filteredFiles)
+            }
+        }
+    }
+
+
     externalNativeBuild {
-        cmake {
-            path 'jni/CMakeLists.txt'
+        if (buildNative) {
+            cmake {
+                path 'jni/CMakeLists.txt'
+            }
         }
     }
 
