@@ -5,7 +5,8 @@
 - [ ] Fill out RELEASE_KEY_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_STORE_PASSWORD in gradle.properties to access your  release.keystore
 - [ ] Go to https://console.firebase.google.com/, create two android apps with application IDs org.telegram.messenger and org.telegram.messenger.beta, turn on firebase messaging and download google-services.json, which should be copied to the same folder as TMessagesProj.
 - [ ] Fill out values in TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java – there’s a link for each of the variables showing where and which data to obtain.
-- [ ] Change name Telegram to TeleGear and icon according to [rules](#Creating_your_Telegram_Application)
+- [x] Change name Telegram to TeleGear and
+- [ ] icon according to [rules](#Creating_your_Telegram_Application)
 
 ## What is TeleGear?
 TeleGear is a simple fork what change almost nothing in original code of Telegram but extend it functionality!
@@ -15,7 +16,7 @@ Currently, my **primary objective**:
 - [ ] to create double bottom like https://postufgram.com/ because as far I know there is not any implementation for android
 
 And I have aspiration to implement next features:
-- [ ] [framework to create own encryption queue](#About_encryption_queue_framework)  
+- [ ] [framework to create own encryption queue](#About_encryption_queue_framework)    
   ...
 
 
@@ -35,20 +36,18 @@ If you are not actively modifying C++ source files, it is highly recommended to 
 2. Paste to: TMessagesProj/src/main/compiledJniLibs/
 
 ### Configuration  In your root `gradle.properties` file, set:
-```properties  buildNative=false    
-```    
-  
----  
-
+```properties  buildNative=false    ```
+    
+---    
 # Telegram official Readme
 ## Telegram messenger for Android
 
-[Telegram](https://telegram.org) is a messaging app with a focus on speed and security. It’s superfast, simple and free.  
+[Telegram](https://telegram.org) is a messaging app with a focus on speed and security. It’s superfast, simple and free.    
 This repo contains the official source code for [Telegram App for Android](https://play.google.com/store/apps/details?id=org.telegram.messenger).
 
 ## Creating_your_Telegram_Application
 
-We welcome all developers to use our API and source code to create applications on our platform.  
+We welcome all developers to use our API and source code to create applications on our platform.    
 There are several things we require from **all developers** for the moment.
 
 1. [**Obtain your own api_id**](https://core.telegram.org/api/obtaining_api_id) for your application.
