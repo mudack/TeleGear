@@ -34,6 +34,7 @@ import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.SQLite.SQLiteDatabase;
 import org.telegram.SQLite.SQLiteException;
 import org.telegram.SQLite.SQLitePreparedStatement;
+import org.telegram.messenger.extended_music_player.MessageLink;
 import org.telegram.messenger.support.LongSparseIntArray;
 import org.telegram.tgnet.NativeByteBuffer;
 import org.telegram.tgnet.RequestDelegate;
@@ -7580,6 +7581,10 @@ public class MessagesStorage extends BaseController {
             checkSQLException(e);
         }
         return ref.get();
+    }
+
+    public TLRPC.Message getMessage(MessageLink messageLink){
+        return getMessage(messageLink.getDialogId(), messageLink.getMessageId());
     }
 
     public boolean hasInviteMeMessage(long chatId) {

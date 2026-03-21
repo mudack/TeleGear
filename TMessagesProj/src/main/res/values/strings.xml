@@ -10527,4 +10527,8 @@
     <string name="RelativeDateMenuSetAReminder">Set a Reminder</string>
     <string name="RelativeDateCopied">Date copied to clipboard</string>
 
+    <string name="playlist_new_playlist">New Playlist</string>
+    <string name="playlist_add_to">Add To…</string>
+    <string name="playlist_add_to_info">Choose which local playlist you want to add this audio to.</string>
+    <string name="playlist_no_local_playlist_text">No local playlist.</string>
 </resources>

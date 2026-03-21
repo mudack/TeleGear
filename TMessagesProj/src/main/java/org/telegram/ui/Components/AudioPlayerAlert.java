@@ -53,7 +53,9 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.core.content.FileProvider;
 import androidx.core.graphics.ColorUtils;
@@ -93,6 +95,7 @@ import org.telegram.messenger.UserObject;
 import org.telegram.messenger.Utilities;
 import org.telegram.messenger.audioinfo.AudioInfo;
 import org.telegram.messenger.chromecast.ChromecastController;
+import org.telegram.messenger.extended_music_player.MusicData;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
@@ -2773,6 +2776,34 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
             final TLRPC.Document document = messageObject.getDocument();
             final long documentId = document != null ? document.id : 0;
 
+            final MusicData musicData = new MusicData(messageObject);
+            final ItemOptions itemOptionsOfAddToPlaylist = o.makeSwipeback();
+            itemOptionsOfAddToPlaylist.add(R.drawable.ic_ab_back, getString(R.string.Back), o::closeSwipeback);
+            itemOptionsOfAddToPlaylist.add( //todo it is for debug remove
+                    "tmp play it",
+                    () -> {
+                        MediaController mediaController = MediaController.getInstance();
+                        MessageObject receivedMessageObject = musicData.getMessageLink().getMessageObject();
+
+                        mediaController.playMessage(receivedMessageObject);
+                        String msg = "rqrwrq messageDataChatType: " + musicData;
+                        System.out.println(msg);
+                        Toast.makeText(getContext(), msg, Toast.LENGTH_LONG).show();
+                    }
+            );
+            itemOptionsOfAddToPlaylist.add(
+                    R.drawable.ic_add_playlist, getString(R.string.playlist_new_playlist),
+                    () -> Toast.makeText(getContext(), "todo impl create a new playlist", Toast.LENGTH_LONG).show()//todo impl create a new playlist
+            );
+            itemOptionsOfAddToPlaylist.addGap();
+            itemOptionsOfAddToPlaylist.addText(getString(R.string.playlist_no_local_playlist_text), 12, dp(200)); //todo add condition, if there is no play list, show this text
+            itemOptionsOfAddToPlaylist.addGap();
+
+            //todo make add a small recycler view for itemOptionsOfAddToPlaylist to show list of recent used playList
+            // itemOptionsOfAddToPlaylist.add(R.drawable.ic_ab_back, getString(R.string.Back), itemOptions::closeSwipeback);
+            itemOptionsOfAddToPlaylist.addGap();
+            itemOptionsOfAddToPlaylist.addText(getString(R.string.playlist_add_to_info), 12, dp(200)); //todo move to dimens
+
             final ItemOptions o2 = o.makeSwipeback();
             o2.add(R.drawable.ic_ab_back, getString(R.string.Back), o::closeSwipeback);
             o2.addGap();
@@ -2800,9 +2831,12 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
             o2.addGap();
             o2.addText(getString(R.string.AudioSaveToInfo), 12, dp(200));
 
+            o.addIf(!noforwards, R.drawable.ic_add_music_note, getString(R.string.playlist_add_to), () -> o.openSwipeback(itemOptionsOfAddToPlaylist));
+            setRightIconForLastItemOption(o, R.drawable.msg_arrowright);
+
+            o.addGap();
             o.addIf(!noforwards, R.drawable.msg_stories_save, getString(R.string.AudioSaveTo), () -> o.openSwipeback(o2));
-            if (!noforwards && o.getLast() != null)
-                o.getLast().setRightIcon(R.drawable.msg_arrowright);
+            setRightIconForLastItemOption(o, R.drawable.msg_arrowright);
 
             o.addGap();
             o.addIf(!noforwards, R.drawable.msg_forward, getString(R.string.Forward), () -> {
@@ -2841,6 +2875,11 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
 
         o.setGravity(LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT);
         o.show();
+    }
+
+    private void setRightIconForLastItemOption(ItemOptions itemOptions, @DrawableRes int icon) {
+        if (!noforwards && itemOptions.getLast() != null)
+            itemOptions.getLast().setRightIcon(icon);
     }
 
     private void setVisibleInProfile(boolean visible) {

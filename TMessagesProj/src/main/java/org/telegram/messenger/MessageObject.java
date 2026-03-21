@@ -380,6 +380,47 @@ public class MessageObject {
     private byte[] randomWaveform;
     public boolean drawServiceWithDefaultTypeface;
 
+    @NonNull
+    public String asMusicToString(){
+        if(!isMusic()) {
+            return "[TYPE IS NOT MUSIC] " + this.toString() + "( " +
+                    " localType: " + localType +
+                    " isMusic: " + isMusic() +
+                    " )";
+        }
+        TLRPC.Document document = getDocument();
+
+        String title = null;
+        String performer = null;
+        double duration = 0;
+
+        for (TLRPC.DocumentAttribute attr : document.attributes) {
+            if (attr instanceof TLRPC.TL_documentAttributeAudio) {
+                TLRPC.TL_documentAttributeAudio audio =
+                        (TLRPC.TL_documentAttributeAudio) attr;
+
+                title = audio.title;
+                performer = audio.performer;
+                duration = audio.duration;
+            }
+        }
+        long documentId = document.id;
+        long documentHash = document.access_hash;
+
+        return this.toString() + "(" +
+                "isMusic:" + isMusic() +
+                ", accountId:" + currentAccount +
+                ", messageIdInChat:" + getId() +
+                ", messageIdInChannel:" + messageOwner.id +
+                ", documentInChat:" + document +
+                ", documentId:" + documentId +
+                ", documentHash:" + documentHash +
+                ", musicTitle:" + title +
+                ", musicPerformer:" + performer +
+                ", musicDuration:" + duration +
+                ")";
+    }
+
     public static boolean hasUnreadReactions(TLRPC.Message message) {
         if (message == null) {
             return false;
