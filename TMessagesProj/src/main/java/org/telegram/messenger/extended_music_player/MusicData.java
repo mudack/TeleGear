@@ -21,6 +21,11 @@ public class MusicData {
         this.musicMetaData = new MusicMetaData(document.attributes);
     }
 
+    public MusicData(@NonNull MessageLink messageLink, @NonNull MusicMetaData musicMetaData) {
+        this.messageLink = messageLink;
+        this.musicMetaData = musicMetaData;
+    }
+
     public MusicMetaData getMusicMetaData() {
         return musicMetaData;
     }

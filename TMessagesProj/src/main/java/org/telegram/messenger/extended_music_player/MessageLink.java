@@ -7,14 +7,20 @@ import org.telegram.messenger.MessagesStorage;
 import org.telegram.tgnet.TLRPC;
 
 public class MessageLink {
-    public final int accountId;
-    public final long dialogId; //i would prefer to call it as a chatId but whole telegram project call it "dialogId" so i better leave it like that
-    public final int messageId;
+    private final int accountId;
+    private final long dialogId; //i would prefer to call it as a chatId but whole telegram project call it "dialogId" so i better leave it like that
+    private final int messageId;
 
     public MessageLink(MessageObject messageObject) {
         this.accountId = messageObject.currentAccount;
         this.dialogId = messageObject.getDialogId();
         this.messageId = messageObject.getId();
+    }
+    
+    public MessageLink(int accountId, long dialogId, int messageId) {
+        this.accountId = accountId;
+        this.dialogId = dialogId;
+        this.messageId = messageId;
     }
 
     public int getAccountId() {
