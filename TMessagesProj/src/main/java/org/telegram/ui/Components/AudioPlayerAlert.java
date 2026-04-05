@@ -2830,6 +2830,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
                             playlist.getName(),
                             () -> {
                                 globalMusicController.addMusicToPlaylist(playlist, musicData);
+                                o.dismiss();
                             }
                     );
                 }));
