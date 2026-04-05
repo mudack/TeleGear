@@ -1,4 +1,4 @@
-package org.telegram.messenger.extended_music_player;
+package org.telegram.messenger.extended_music_player.entity.music;
 
 import androidx.annotation.NonNull;
 
@@ -21,12 +21,12 @@ public class MusicMetaData {
     }
 
     public MusicMetaData(ArrayList<TLRPC.DocumentAttribute> attributes){
-        MusicMetaData tempMetadata = getMetadataByDocAttrList(attributes);
+        MusicMetaData metadata = fromDocumentAttrList(attributes);
 
-        this.title = tempMetadata.getTitle();
-        this.fileName = tempMetadata.getFileName();
-        this.performer = tempMetadata.getPerformer();
-        this.durationSec = tempMetadata.getDurationSec();
+        this.title = metadata.getTitle();
+        this.fileName = metadata.getFileName();
+        this.performer = metadata.getPerformer();
+        this.durationSec = metadata.getDurationSec();
     }
 
     public String getTitle() {
@@ -43,7 +43,7 @@ public class MusicMetaData {
     }
 
 
-    private MusicMetaData getMetadataByDocAttrList(ArrayList<TLRPC.DocumentAttribute> attributes) {
+    public static MusicMetaData fromDocumentAttrList(ArrayList<TLRPC.DocumentAttribute> attributes) {
         //fields from TL_documentAttributeAudio
         String title = MusicMetaData.MUSIC_META_DATA_NULL_OBJECT.getTitle();//todo replace with stringRes
         String fileName = MusicMetaData.MUSIC_META_DATA_NULL_OBJECT.getFileName();//todo replace with stringRes

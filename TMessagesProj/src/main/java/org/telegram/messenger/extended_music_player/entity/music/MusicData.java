@@ -1,11 +1,10 @@
-package org.telegram.messenger.extended_music_player;
+package org.telegram.messenger.extended_music_player.entity.music;
 
 import androidx.annotation.NonNull;
 
-import org.telegram.messenger.MessageObject;
-import org.telegram.tgnet.TLRPC;
+import org.telegram.messenger.extended_music_player.entity.MessageLink;
+import org.telegram.messenger.extended_music_player.entity.music.adapters.message_object.MusicMessageObjectAdapterInterface;
 
-import java.util.ArrayList;
 import java.util.Objects;
 
 public class MusicData {
@@ -13,18 +12,28 @@ public class MusicData {
     private final MessageLink messageLink;
     private final MusicMetaData musicMetaData;
 
-    public MusicData(@NonNull MessageObject messageObject) {
-        if (!messageObject.isMusic())
-            throw new IllegalArgumentException("messageObject type is not Music");
-        TLRPC.Document document = messageObject.getDocument();
-        this.messageLink = new MessageLink(messageObject);
-        this.musicMetaData = new MusicMetaData(document.attributes);
+    public MusicData(@NonNull MusicMessageObjectAdapterInterface messageSource) {
+        this(messageSource, new MessageLink(messageSource));
     }
 
-    public MusicData(@NonNull MessageLink messageLink, @NonNull MusicMetaData musicMetaData) {
+    public MusicData(@NonNull MessageLink messageLink) {
+        this(messageLink.getMessageSource(), messageLink);
+    }
+
+    public MusicData(@NonNull MessageLink messageLink, @NonNull MusicMetaData musicMetaData){
         this.messageLink = messageLink;
         this.musicMetaData = musicMetaData;
     }
+
+    private MusicData(MusicMessageObjectAdapterInterface messageObject, MessageLink messageLink) {
+        if (!messageObject.isMusic())
+            throw new IllegalArgumentException("messageObject type is not Music");
+
+        this.messageLink = messageLink;
+
+        this.musicMetaData = messageObject.getMusicMetadata();
+    }
+
 
     public MusicMetaData getMusicMetaData() {
         return musicMetaData;

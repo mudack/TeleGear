@@ -28,6 +28,7 @@ dependencies {
     implementation 'com.google.android.gms:play-services-cast-framework:21.4.0'
     implementation "androidx.mediarouter:mediarouter:1.7.0"
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
+    implementation 'androidx.test:core:1.7.0'
 
     compileOnly 'org.checkerframework:checker-qual:2.5.2'
     compileOnly 'org.checkerframework:checker-compat-qual:2.5.0'
@@ -72,6 +73,18 @@ dependencies {
 
     // debugImplementation because LeakCanary should only run in debug builds.
     debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.14'
+
+    testImplementation 'junit:junit:4.13.2'
+
+    //AssertJ
+    testImplementation 'org.assertj:assertj-core:3.24.2'
+
+    //Mockito
+    testImplementation 'org.mockito:mockito-core:5.11.0'
+
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
 }
 
 def isWindows = String.valueOf(DefaultNativePlatform.currentOperatingSystem.toFamilyName() == OperatingSystemFamily.WINDOWS)
@@ -151,6 +164,8 @@ android {
         buildConfigField "int", "TG_APP_ID", tgAppId
         def tgAppHash = localProperties.getProperty('TG_APP_HASH')
         buildConfigField "String", "TG_APP_HASH", "$tgAppHash"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
