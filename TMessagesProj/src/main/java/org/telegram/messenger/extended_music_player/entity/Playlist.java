@@ -1,4 +1,4 @@
-package org.telegram.messenger.extended_music_player;
+package org.telegram.messenger.extended_music_player.entity;
 
 public class Playlist {
     private final int id;
