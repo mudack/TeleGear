@@ -20,7 +20,7 @@ public class MusicMetaData {
         this.durationSec = duration;
     }
 
-    public MusicMetaData(ArrayList<TLRPC.DocumentAttribute> attributes){
+    public MusicMetaData(ArrayList<TLRPC.DocumentAttribute> attributes) {
         MusicMetaData metadata = fromDocumentAttrList(attributes);
 
         this.title = metadata.getTitle();
@@ -32,12 +32,15 @@ public class MusicMetaData {
     public String getTitle() {
         return title;
     }
+
     public String getFileName() {
         return fileName;
     }
+
     public String getPerformer() {
         return performer;
     }
+
     public double getDurationSec() {
         return durationSec;
     }
@@ -70,19 +73,25 @@ public class MusicMetaData {
                 else if (audio.file_name != null && !audio.file_name.isEmpty()) {
                     title = audio.file_name;
                 }
-                if (audio.file_name != null && !audio.file_name.isEmpty()) fileName = audio.file_name;
-                if (audio.performer != null && !audio.performer.isEmpty()) performer = audio.performer;
+                if (audio.file_name != null && !audio.file_name.isEmpty())
+                    fileName = audio.file_name;
+                if (audio.performer != null && !audio.performer.isEmpty())
+                    performer = audio.performer;
                 if (audio.duration != 0) duration = audio.duration;
 
             }
         }
 
         //checking below was implemented assure that data like fileName is not miss cause it can be!!!
-        if (title.equals(MusicMetaData.MUSIC_META_DATA_NULL_OBJECT.getTitle())) {
-            title = docAttrTitle;
-        }
+
         if (fileName.equals(MusicMetaData.MUSIC_META_DATA_NULL_OBJECT.getFileName())) {
             fileName = docAttrFileName;
+        }
+        if (title.equals(MusicMetaData.MUSIC_META_DATA_NULL_OBJECT.getTitle())) {
+            title = docAttrTitle;
+            if (title.equals(MusicMetaData.MUSIC_META_DATA_NULL_OBJECT.getTitle()) && !fileName.equals(MusicMetaData.MUSIC_META_DATA_NULL_OBJECT.getFileName())) {
+                title = fileName;
+            }
         }
         if (performer.equals(MusicMetaData.MUSIC_META_DATA_NULL_OBJECT.getPerformer())) {
             performer = docAttrPerformer;
@@ -93,7 +102,6 @@ public class MusicMetaData {
 
         return new MusicMetaData(title, fileName, performer, duration);
     }
-
 
 
     @Override
