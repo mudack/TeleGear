@@ -1,6 +1,7 @@
 package org.telegram.messenger.extended_music_player.entity.music.adapters.message_object;
 
 import org.telegram.messenger.MessageObject;
+import org.telegram.messenger.extended_music_player.entity.MessageLink;
 import org.telegram.messenger.extended_music_player.entity.music.MusicMetaData;
 
 public class MessageObjectAdapter implements MusicMessageObjectAdapterInterface {
@@ -16,18 +17,8 @@ public class MessageObjectAdapter implements MusicMessageObjectAdapterInterface 
     }
 
     @Override
-    public int getCurrentAccountId() {
-        return messageObject.currentAccount;
-    }
-
-    @Override
-    public long getDialogId() {
-        return messageObject.getDialogId();
-    }
-
-    @Override
-    public int getMessageId() {
-        return messageObject.getId();
+    public MessageLink getMessageLink() {
+        return new MessageLink(messageObject);
     }
 
     @Override

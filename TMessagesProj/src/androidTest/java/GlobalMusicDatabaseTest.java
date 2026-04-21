@@ -24,13 +24,13 @@ public class GlobalMusicDatabaseTest {
     @Before
     public void setup() throws Exception {
         File filesDir = ApplicationLoader.getFilesDirFixed();
-        testDbFile = new File(filesDir, "test_music.db");
+        testDbFile = new File(filesDir, "test_test_music.db");
 
         if (testDbFile.exists()) {
             testDbFile.delete();
         }
 
-        db =  new GlobalMusicDatabaseImpl(testDbFile);
+        db = new GlobalMusicDatabaseImpl(testDbFile);
     }
 
     @After
@@ -82,7 +82,7 @@ public class GlobalMusicDatabaseTest {
     public void testAddMusicToPlaylist() throws Exception {
         Playlist playlist = db.createPlaylist("MyPlaylist");
 
-        MusicData music = createTestMusic(1, 12L, 34);
+        MusicData music = createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 12L, 34);
 
         db.addMusicToPlaylist(playlist.getId(), music);
 
@@ -93,7 +93,8 @@ public class GlobalMusicDatabaseTest {
 
         MessageLink link = result.get(0);
 
-        assertEquals(music.getMessageLink().getAccountId(), link.getAccountId());
+        assertEquals(music.getMessageLink().getGlobalAccountId(), link.getGlobalAccountId());
+        assertEquals(music.getMessageLink().getLocalAccountId(), link.getLocalAccountId());
         assertEquals(music.getMessageLink().getDialogId(), link.getDialogId());
         assertEquals(music.getMessageLink().getMessageId(), link.getMessageId());
     }
@@ -102,7 +103,7 @@ public class GlobalMusicDatabaseTest {
     public void testAddMusicToPlaylist_NoDuplicates() throws Exception {
         Playlist playlist = db.createPlaylist("MyPlaylist");
 
-        MusicData music = createTestMusic(1, 123L, 3);
+        MusicData music = createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 123L, 3);
 
         db.addMusicToPlaylist(playlist.getId(), music);
         db.addMusicToPlaylist(playlist.getId(), music);
@@ -115,10 +116,10 @@ public class GlobalMusicDatabaseTest {
 
     @Test
     public void testGetAllMusicFromLibrary() throws Exception {
-        MusicData music1 = createTestMusic(1, 1231L, 31);
-        MusicData music2 = createTestMusic(2, 1232L, 32);
-        MusicData music3 = createTestMusic(3, 1233L, 33);
-        MusicData music4 = createTestMusic(4, 1234L, 34);
+        MusicData music1 = createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 1231L, 31);
+        MusicData music2 = createTestMusic(TEST_GLOBAL_ACC_ID_1, 2, 1232L, 32);
+        MusicData music3 = createTestMusic(TEST_GLOBAL_ACC_ID_1, 3, 1233L, 33);
+        MusicData music4 = createTestMusic(TEST_GLOBAL_ACC_ID_1, 4, 1234L, 34);
 
         db.addMusicToLibrary(music1);
         db.addMusicToLibrary(music2);
@@ -132,7 +133,7 @@ public class GlobalMusicDatabaseTest {
 
     @Test
     public void testAddMusicToLibrary_NoDuplicates() throws Exception {
-        MusicData music = createTestMusic(1, 123L, 3);
+        MusicData music = createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 123L, 3);
 
         db.addMusicToLibrary(music);
         db.addMusicToLibrary(music);
@@ -143,7 +144,7 @@ public class GlobalMusicDatabaseTest {
     }
 
 
-    private MusicData createTestMusic(int accId, long dId, int msgId) {
+    private MusicData createTestMusic(long globalAccId, int localAccId, long dId, int msgId) {
 
         MusicMessageObjectAdapterInterface messageSource = new MusicMessageObjectAdapterInterface() {
             @Override
@@ -152,18 +153,10 @@ public class GlobalMusicDatabaseTest {
             }
 
             @Override
-            public int getCurrentAccountId() {
-                return accId;
-            }
-
-            @Override
-            public long getDialogId() {
-                return dId;
-            }
-
-            @Override
-            public int getMessageId() {
-                return msgId;
+            public MessageLink getMessageLink() {
+                return new MessageLink(
+                        globalAccId, localAccId, dId, msgId
+                );
             }
 
             @Override
@@ -174,4 +167,9 @@ public class GlobalMusicDatabaseTest {
         };
         return new MusicData(messageSource);
     }
+
+    private final long TEST_GLOBAL_ACC_ID_1 = 516289273;
+    private final long TEST_GLOBAL_ACC_ID_2 = 516289284;
+    private final long TEST_GLOBAL_ACC_ID_3 = 516289295;
+    private final long TEST_GLOBAL_ACC_ID_4 = 516289206;
 }

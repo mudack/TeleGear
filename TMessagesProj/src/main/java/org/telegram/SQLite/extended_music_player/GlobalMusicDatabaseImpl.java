@@ -73,14 +73,15 @@ public class GlobalMusicDatabaseImpl implements GlobalMusicDatabase {
         database = new org.telegram.SQLite.SQLiteDatabase(dbFile.getPath());
         database.executeFast("CREATE TABLE IF NOT EXISTS " + DB_TRACKS_TABLE_NAME + " (" +
                 DB_TRACKS_COLUMN_NAME_UID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                DB_TRACKS_COLUMN_NAME_ACC_ID + " INTEGER NOT NULL, " +
+                DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID + " INTEGER NOT NULL, " +
+                DB_TRACKS_COLUMN_NAME_LOCAL_ACC_ID + " INTEGER NOT NULL, " +
                 DB_TRACKS_COLUMN_NAME_DIALOG_ID + " INTEGER NOT NULL, " +
                 DB_TRACKS_COLUMN_NAME_MESSAGE_ID + " INTEGER NOT NULL, " +
-                DB_TRACKS_COLUMN_NAME_MUSIC_TITLE + " TEXT NOT NULL, " +
+                DB_TRACKS_COLUMN_NAME_MUSIC_TITLE + " TEXT, " +
                 DB_TRACKS_COLUMN_NAME_MUSIC_FILE_NAME + " TEXT NOT NULL, " +
                 DB_TRACKS_COLUMN_NAME_MUSIC_PERFORMER + " TEXT, " +
                 DB_TRACKS_COLUMN_NAME_DURATION_SEC + " REAL NOT NULL, " +
-                " UNIQUE(" + DB_TRACKS_COLUMN_NAME_ACC_ID + ", " + DB_TRACKS_COLUMN_NAME_DIALOG_ID + ", " + DB_TRACKS_COLUMN_NAME_MESSAGE_ID + ")" +
+                " UNIQUE(" + DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID + ", " + DB_TRACKS_COLUMN_NAME_LOCAL_ACC_ID + ", " + DB_TRACKS_COLUMN_NAME_DIALOG_ID + ", " + DB_TRACKS_COLUMN_NAME_MESSAGE_ID + ")" +
                 ")").stepThis().dispose();
 
         database.executeFast("CREATE TABLE IF NOT EXISTS " + DB_PLAYLISTS_TABLE_NAME + " (" +
@@ -166,14 +167,16 @@ public class GlobalMusicDatabaseImpl implements GlobalMusicDatabase {
     public Integer addMusicToLibrary(MusicData music) throws SQLiteException { //should be use in addTrackToPlaylist
         SQLitePreparedStatement state = database.executeFast(
                 "INSERT OR IGNORE INTO " + DB_TRACKS_TABLE_NAME + " (" +
-                        DB_TRACKS_COLUMN_NAME_ACC_ID + ", " +
+                        DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID + ", " +
+                        DB_TRACKS_COLUMN_NAME_LOCAL_ACC_ID + ", " +
                         DB_TRACKS_COLUMN_NAME_DIALOG_ID + ", " +
                         DB_TRACKS_COLUMN_NAME_MESSAGE_ID + ", " +
+
                         DB_TRACKS_COLUMN_NAME_MUSIC_TITLE + ", " +
                         DB_TRACKS_COLUMN_NAME_MUSIC_FILE_NAME + ", " +
                         DB_TRACKS_COLUMN_NAME_MUSIC_PERFORMER + ", " +
                         DB_TRACKS_COLUMN_NAME_DURATION_SEC +
-                        ") VALUES (?, ?, ?, ?, ?, ?, ?)"
+                        ") VALUES (?, ?, ?, ?,   ?, ?, ?, ?)"
         );
 
         state.requery();
@@ -181,26 +184,31 @@ public class GlobalMusicDatabaseImpl implements GlobalMusicDatabase {
         MusicMetaData metaData = music.getMusicMetaData();
         MessageLink link = music.getMessageLink();
 
-        int accId = link.getAccountId();
+        long globalAccountId = link.getGlobalAccountId();
+        int localAccountId = link.getLocalAccountId();
         long dialogId = link.getDialogId();
         int msgId = link.getMessageId();
 
-        state.bindInteger(1, accId);
-        state.bindLong(2, dialogId);
-        state.bindInteger(3, msgId);
-        state.bindString(4, metaData.getTitle());
-        state.bindString(5, metaData.getFileName());
-        state.bindString(6, metaData.getPerformer());
-        state.bindDouble(7, metaData.getDurationSec());
+        state.bindLong(1, globalAccountId);
+        state.bindInteger(2, localAccountId);
+        state.bindLong(3, dialogId);
+        state.bindInteger(4, msgId);
+
+        state.bindString(5, metaData.getTitle());
+        state.bindString(6, metaData.getFileName());
+        state.bindString(7, metaData.getPerformer());
+        state.bindDouble(8, metaData.getDurationSec());
 
         state.step();
         state.dispose();
 
         Integer musicIdByLink = database.executeInt("SELECT " + DB_TRACKS_COLUMN_NAME_UID + " FROM " + DB_TRACKS_TABLE_NAME + " WHERE " +
-                        DB_TRACKS_COLUMN_NAME_ACC_ID + "=? AND " +
+                        DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID + "=? AND " +
+                        DB_TRACKS_COLUMN_NAME_LOCAL_ACC_ID + "=? AND " +
                         DB_TRACKS_COLUMN_NAME_DIALOG_ID + "=? AND " +
                         DB_TRACKS_COLUMN_NAME_MESSAGE_ID + "=?",
-                accId,
+                globalAccountId,
+                localAccountId,
                 dialogId,
                 msgId
         );
@@ -212,9 +220,10 @@ public class GlobalMusicDatabaseImpl implements GlobalMusicDatabase {
     public MusicData getMusicFromLibraryById(int id) throws SQLiteException {
         MusicData music = null;
         SQLiteCursor cursor = database.queryFinalized(
-                "SELECT ?, ?, ?,   ?, ?, ?, ?  FROM " + DB_TRACKS_TABLE_NAME + " WHERE " + DB_TRACKS_COLUMN_NAME_UID + "=?",
+                "SELECT ?, ?, ?, ?,   ?, ?, ?, ?  FROM " + DB_TRACKS_TABLE_NAME + " WHERE " + DB_TRACKS_COLUMN_NAME_UID + "=?",
 
-                DB_TRACKS_COLUMN_NAME_ACC_ID,
+                DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID,
+                DB_TRACKS_COLUMN_NAME_LOCAL_ACC_ID,
                 DB_TRACKS_COLUMN_NAME_DIALOG_ID,
                 DB_TRACKS_COLUMN_NAME_MESSAGE_ID,
 
@@ -228,26 +237,28 @@ public class GlobalMusicDatabaseImpl implements GlobalMusicDatabase {
 
         while (cursor.next()) {
         /* documentation
-            0 - DB_TRACKS_COLUMN_NAME_ACC_ID
-            1 - DB_TRACKS_COLUMN_NAME_DIALOG_ID
-            2 - DB_TRACKS_COLUMN_NAME_MESSAGE_ID
+            0 - DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID
+            1 - DB_TRACKS_COLUMN_NAME_LOCAL_ACC_ID
+            2 - DB_TRACKS_COLUMN_NAME_DIALOG_ID
+            3 - DB_TRACKS_COLUMN_NAME_MESSAGE_ID
 
-            3 - DB_TRACKS_COLUMN_NAME_MUSIC_TITLE,
-            4 - DB_TRACKS_COLUMN_NAME_MUSIC_FILE_NAME,
-            5 - DB_TRACKS_COLUMN_NAME_MUSIC_PERFORMER,
-            6 - DB_TRACKS_COLUMN_NAME_DURATION_SEC
+            4 - DB_TRACKS_COLUMN_NAME_MUSIC_TITLE,
+            5 - DB_TRACKS_COLUMN_NAME_MUSIC_FILE_NAME,
+            6 - DB_TRACKS_COLUMN_NAME_MUSIC_PERFORMER,
+            7 - DB_TRACKS_COLUMN_NAME_DURATION_SEC
          */
 
-            int accId = cursor.intValue(0);
-            long dialogId = cursor.longValue(1);
-            int messageId = cursor.intValue(2);
+            long globalAccId = cursor.longValue(0);
+            int localAccId = cursor.intValue(1);
+            long dialogId = cursor.longValue(2);
+            int messageId = cursor.intValue(3);
 
-            String title = cursor.stringValue(3);
-            String fileName = cursor.stringValue(4);
-            String performer = cursor.stringValue(5);
-            double durationInSec = cursor.doubleValue(6);
+            String title = cursor.stringValue(4);
+            String fileName = cursor.stringValue(5);
+            String performer = cursor.stringValue(6);
+            double durationInSec = cursor.doubleValue(7);
 
-            MessageLink link = new MessageLink(accId, dialogId, messageId);
+            MessageLink link = new MessageLink(globalAccId, localAccId, dialogId, messageId);
             MusicMetaData musicMetaData = new MusicMetaData(title, fileName, performer, durationInSec);
             music = new MusicData(link, musicMetaData);
         }
@@ -260,8 +271,9 @@ public class GlobalMusicDatabaseImpl implements GlobalMusicDatabase {
     @Override
     public ArrayList<MusicData> getAllMusicFromLibrary() throws SQLiteException {
         SQLiteCursor cursor = database.queryFinalized(
-                "SELECT ?, ?, ?,   ?, ?, ?, ? FROM " + DB_TRACKS_TABLE_NAME,
-                DB_TRACKS_COLUMN_NAME_ACC_ID,
+                "SELECT ?, ?, ?, ?,   ?, ?, ?, ? FROM " + DB_TRACKS_TABLE_NAME,
+                DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID,
+                DB_TRACKS_COLUMN_NAME_LOCAL_ACC_ID,
                 DB_TRACKS_COLUMN_NAME_DIALOG_ID,
                 DB_TRACKS_COLUMN_NAME_MESSAGE_ID,
 
@@ -275,26 +287,28 @@ public class GlobalMusicDatabaseImpl implements GlobalMusicDatabase {
         ArrayList<MusicData> result = new ArrayList<>();
         while (cursor.next()) {
         /* documentation
-            0 - DB_TRACKS_COLUMN_NAME_ACC_ID
-            1 - DB_TRACKS_COLUMN_NAME_DIALOG_ID
-            2 - DB_TRACKS_COLUMN_NAME_MESSAGE_ID
+            0 - DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID
+            1 - DB_TRACKS_COLUMN_NAME_LOCAL_ACC_ID
+            2 - DB_TRACKS_COLUMN_NAME_DIALOG_ID
+            3 - DB_TRACKS_COLUMN_NAME_MESSAGE_ID
 
-            3 - DB_TRACKS_COLUMN_NAME_MUSIC_TITLE,
-            4 - DB_TRACKS_COLUMN_NAME_MUSIC_FILE_NAME,
-            5 - DB_TRACKS_COLUMN_NAME_MUSIC_PERFORMER,
-            6 - DB_TRACKS_COLUMN_NAME_DURATION_SEC
+            4 - DB_TRACKS_COLUMN_NAME_MUSIC_TITLE,
+            5 - DB_TRACKS_COLUMN_NAME_MUSIC_FILE_NAME,
+            6 - DB_TRACKS_COLUMN_NAME_MUSIC_PERFORMER,
+            7 - DB_TRACKS_COLUMN_NAME_DURATION_SEC
          */
 
-            int accId = cursor.intValue(0);
-            long dialogId = cursor.longValue(1);
-            int messageId = cursor.intValue(2);
+            long globalAccId = cursor.longValue(0);
+            int localAccId = cursor.intValue(1);
+            long dialogId = cursor.longValue(2);
+            int messageId = cursor.intValue(3);
 
-            String title = cursor.stringValue(3);
-            String fileName = cursor.stringValue(4);
-            String performer = cursor.stringValue(5);
-            double durationInSec = cursor.doubleValue(6);
+            String title = cursor.stringValue(4);
+            String fileName = cursor.stringValue(5);
+            String performer = cursor.stringValue(6);
+            double durationInSec = cursor.doubleValue(7);
 
-            MessageLink link = new MessageLink(accId, dialogId, messageId);
+            MessageLink link = new MessageLink(globalAccId, localAccId, dialogId, messageId);
             MusicMetaData musicMetaData = new MusicMetaData(title, fileName, performer, durationInSec);
             result.add(new MusicData(link, musicMetaData));
         }
@@ -326,7 +340,8 @@ public class GlobalMusicDatabaseImpl implements GlobalMusicDatabase {
     public ArrayList<MessageLink> getMusicLinksByPlaylistId(int playlistId) throws SQLiteException {
         ArrayList<MessageLink> result = new ArrayList<>();
         SQLiteCursor cursor = database.queryFinalized(
-                "SELECT t." + DB_TRACKS_COLUMN_NAME_ACC_ID + ", " +
+                "SELECT t." + DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID + ", " +
+                        "t." + DB_TRACKS_COLUMN_NAME_LOCAL_ACC_ID + ", " +
                         "t." + DB_TRACKS_COLUMN_NAME_DIALOG_ID + ", " +
                         "t." + DB_TRACKS_COLUMN_NAME_MESSAGE_ID + " " +
                         "FROM " + DB_TRACKS_TABLE_NAME + " t " +
@@ -337,16 +352,18 @@ public class GlobalMusicDatabaseImpl implements GlobalMusicDatabase {
 
         while (cursor.next()) {
         /* documentation
-            0 - DB_TRACKS_COLUMN_NAME_ACC_ID
-            1 - DB_TRACKS_COLUMN_NAME_DIALOG_ID
-            2 - DB_TRACKS_COLUMN_NAME_MESSAGE_ID
+            0 - DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID
+            1 - DB_TRACKS_COLUMN_NAME_LOCAL_ACC_ID
+            2 - DB_TRACKS_COLUMN_NAME_DIALOG_ID
+            3 - DB_TRACKS_COLUMN_NAME_MESSAGE_ID
          */
 
-            int accId = cursor.intValue(0);
-            long dialogId = cursor.longValue(1);
-            int messageId = cursor.intValue(2);
+            long globalAccId = cursor.longValue(0);
+            int localAccId = cursor.intValue(1);
+            long dialogId = cursor.longValue(2);
+            int messageId = cursor.intValue(3);
 
-            MessageLink link = new MessageLink(accId, dialogId, messageId);
+            MessageLink link = new MessageLink(globalAccId, localAccId, dialogId, messageId);
             result.add(link);
 
         }
@@ -361,7 +378,8 @@ public class GlobalMusicDatabaseImpl implements GlobalMusicDatabase {
     //TRACKS TABLE
     private static final String DB_TRACKS_TABLE_NAME = "tracks";
     private static final String DB_TRACKS_COLUMN_NAME_UID = "uid";
-    private static final String DB_TRACKS_COLUMN_NAME_ACC_ID = "acc_id";
+    private static final String DB_TRACKS_COLUMN_NAME_LOCAL_ACC_ID = "local_acc_id";
+    private static final String DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID = "global_acc_id";
     private static final String DB_TRACKS_COLUMN_NAME_DIALOG_ID = "dialog_id";
     private static final String DB_TRACKS_COLUMN_NAME_MESSAGE_ID = "message_id";
     private static final String DB_TRACKS_COLUMN_NAME_MUSIC_TITLE = "title";

@@ -2804,11 +2804,12 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
             itemOptionsOfAddToPlaylist.add( //todo it is for debug, remove after
                     "tmp play it",
                     () -> {
+                        long clientUserId = UserConfig.getInstance(currentAccount).getClientUserId();
                         MediaController mediaController = MediaController.getInstance();
                         MessageObject receivedMessageObject = musicData.getMessageLink().getMessageObject();
 
                         mediaController.playMessage(receivedMessageObject);
-                        String msg = "rqrwrq messageDataChatType: " + musicData;
+                        String msg = "rqrwrq clientUserId "+ clientUserId +" messageDataChatType: " + musicData;
                         System.out.println(msg);
                         Toast.makeText(getContext(), msg, Toast.LENGTH_LONG).show();
                     }

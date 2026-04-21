@@ -21,10 +21,10 @@ And I have aspiration to implement next features:
 
 
 ## About_encryption_queue_framework
-In university I was learnt that if I want to create my own algorithm of encryption it should be created with the expectation that everybody knows how it works, so I decide to break it conception a bit by providing for every telegram user a framework what will let them create their own encryption queue what will be based on exists one, and of course they will be warned that all on their responsibility!
+In university, I was learnt that if I want to create my own algorithm of encryption it should be created with the expectation that everybody knows how it works, so I decide to break it conception a bit by providing for every telegram user a framework what will let them create their own encryption queue what will be based on exists one, and of course they will be warned that all on their responsibility!
 ## Native Code Build Optimization
 
-Compiling native C/C++ components (FFmpeg, BoringSSL, RLottie, etc.) is a resource-intensive process. On mid-range hardware or older laptops (like ThinkPads), a full clean build can take **over 10 minutes**, while a standard incremental build takes only **~6 seconds**.
+Compiling native C/C++ components (FFmpeg, BoringSSL, RLottie, etc.) is a resource-intensive process. On mid-range hardware or older laptops, a full clean build can take **over 10 minutes**, while a standard incremental build takes only **~6 seconds**.
 
 If you are not actively modifying C++ source files, it is highly recommended to use the **Precompiled Libraries** mode.
 
