@@ -16,4 +16,10 @@ public interface GlobalMusicDatabase {
     ArrayList<MusicData> getAllMusicFromLibrary() throws SQLiteException;
     void addMusicToPlaylist(int playlistId, MusicData music) throws SQLiteException;
     ArrayList<MessageLink> getMusicLinksByPlaylistId(int playlistId) throws SQLiteException;
+
+    void markPlaylistAsRecent(int playlistId, long timestamp) throws SQLiteException;
+    ArrayList<Playlist> getRecentPlaylists(int limit) throws SQLiteException;
+    ArrayList<Playlist> getRecentPlaylistsByOffset(int offset, int limit) throws SQLiteException;
+    void removeRecentPlaylist(int playlistId) throws SQLiteException;
+    void clearRecentPlaylists() throws SQLiteException;
 }

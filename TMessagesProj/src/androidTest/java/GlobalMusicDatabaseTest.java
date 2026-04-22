@@ -4,6 +4,7 @@ import static org.junit.Assert.assertNotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.telegram.SQLite.SQLiteException;
 import org.telegram.SQLite.extended_music_player.GlobalMusicDatabase;
 import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseImpl;
 import org.telegram.messenger.ApplicationLoader;
@@ -24,7 +25,7 @@ public class GlobalMusicDatabaseTest {
     @Before
     public void setup() throws Exception {
         File filesDir = ApplicationLoader.getFilesDirFixed();
-        testDbFile = new File(filesDir, "test_test_music.db");
+        testDbFile = new File(filesDir, "test_2_music.db");
 
         if (testDbFile.exists()) {
             testDbFile.delete();
@@ -145,7 +146,6 @@ public class GlobalMusicDatabaseTest {
 
 
     private MusicData createTestMusic(long globalAccId, int localAccId, long dId, int msgId) {
-
         MusicMessageObjectAdapterInterface messageSource = new MusicMessageObjectAdapterInterface() {
             @Override
             public boolean isMusic() {
@@ -166,6 +166,88 @@ public class GlobalMusicDatabaseTest {
 
         };
         return new MusicData(messageSource);
+    }
+
+    @Test
+    public void testMarkAndGetRecentPlaylists() throws SQLiteException {
+        Playlist p1 = db.createPlaylist("P1");
+        Playlist p2 = db.createPlaylist("P2");
+        Playlist p3 = db.createPlaylist("P3");
+
+        db.markPlaylistAsRecent(p1.getId(), 1000);
+        db.markPlaylistAsRecent(p2.getId(), 2000);
+        db.markPlaylistAsRecent(p3.getId(), 3000);
+
+        ArrayList<Playlist> result = db.getRecentPlaylists(3);
+
+        assertEquals(3, result.size());
+        assertEquals(p3.getId(), result.get(0).getId());
+        assertEquals(p2.getId(), result.get(1).getId());
+        assertEquals(p1.getId(), result.get(2).getId());
+    }
+
+    @Test
+    public void testRecentPlaylistsUpsert() throws SQLiteException {
+        Playlist p = db.createPlaylist("P1");
+
+        db.markPlaylistAsRecent(p.getId(), 1000);
+        db.markPlaylistAsRecent(p.getId(), 5000);
+
+        ArrayList<Playlist> result = db.getRecentPlaylists(3);
+
+        assertEquals(1, result.size());
+        assertEquals(p.getId(), result.get(0).getId());
+    }
+
+    @Test
+    public void testRemoveRecentPlaylist() throws SQLiteException {
+        Playlist p1 = db.createPlaylist("P1");
+        Playlist p2 = db.createPlaylist("P2");
+
+        db.markPlaylistAsRecent(p1.getId(), 1000);
+        db.markPlaylistAsRecent(p2.getId(), 2000);
+
+        db.removeRecentPlaylist(p1.getId());
+
+        ArrayList<Playlist> result = db.getRecentPlaylists(3);
+
+        assertEquals(1, result.size());
+        assertEquals(p2.getId(), result.get(0).getId());
+    }
+
+    @Test
+    public void testClearRecentPlaylists() throws SQLiteException {
+        Playlist p1 = db.createPlaylist("P1");
+        Playlist p2 = db.createPlaylist("P2");
+        Playlist p3 = db.createPlaylist("P3");
+
+        db.markPlaylistAsRecent(p1.getId(), 1000);
+        db.markPlaylistAsRecent(p2.getId(), 2000);
+        db.markPlaylistAsRecent(p3.getId(), 3000);
+
+        db.clearRecentPlaylists();
+
+        ArrayList<Playlist> result = db.getRecentPlaylists(3);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    public void testRecentPlaylistUpdatesExistingEntry() throws SQLiteException {
+        Playlist p = db.createPlaylist("P1");
+
+        db.markPlaylistAsRecent(p.getId(), 1000);
+
+        ArrayList<Playlist> result1 = db.getRecentPlaylists(3);
+        assertEquals(1, result1.size());
+        assertEquals(p.getId(), result1.get(0).getId());
+
+        db.markPlaylistAsRecent(p.getId(), 5000);
+
+        ArrayList<Playlist> result2 = db.getRecentPlaylists(3);
+
+        assertEquals(1, result2.size());
+        assertEquals(p.getId(), result2.get(0).getId());
     }
 
     private final long TEST_GLOBAL_ACC_ID_1 = 516289273;

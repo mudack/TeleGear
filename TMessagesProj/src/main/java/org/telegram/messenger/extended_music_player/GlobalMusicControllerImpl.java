@@ -48,6 +48,9 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
                 File filesDir = ApplicationLoader.getFilesDirFixed();
                 File dbFile = new File(filesDir, GLOBAL_MUSIC_DB_FILE_NAME);
                 database = new GlobalMusicDatabaseImpl(dbFile);
+
+                ArrayList<Playlist> savedRecentPlaylist = database.getRecentPlaylists(MAX_AMOUNT_OF_RECENT_PLAYLIST);
+                recentPlaylists.addAll(savedRecentPlaylist);
             } catch (SQLiteException e) {
                 FileLog.e(e);
                 throw new RuntimeException(e);
@@ -62,9 +65,9 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
                 Playlist insertedPlaylist = database.createPlaylist(name);
 
                 AndroidUtilities.runOnUIThread(() -> {
-                    if (recentPlaylists.size() < MAX_AMOUNT_OF_RECENT_PLAYLIST) {
-                        addPlaylistToRecent(insertedPlaylist);
-                    }
+//                    if (recentPlaylists.size() < MAX_AMOUNT_OF_RECENT_PLAYLIST) {
+                    addPlaylistToRecent(insertedPlaylist);
+//                    }
                     NotificationCenter.getGlobalInstance().postNotificationName(
                             NotificationCenter.musicPlaylistCreated,
                             name
@@ -189,13 +192,28 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
             }
             recentPlaylists.addFirst(playlist);
         }
+        int playlistId = playlist.getId();
+        long timestamp = System.currentTimeMillis();
+        storageQueue.postRunnable(() -> {
+            try {
+                database.markPlaylistAsRecent(playlistId, timestamp);
+            } catch (SQLiteException e) {
+                FileLog.e(e);
+                e.printStackTrace();
+                AndroidUtilities.runOnUIThread(() -> {
+                    NotificationCenter.getGlobalInstance().postNotificationName(
+                            NotificationCenter.musicDatabaseError,
+                            "Can't mark playlist as a recent one with id: " + playlistId + " due " + e.getMessage()
+                    );
+                });
+            }
+        });
     }
 
     @Override
     public ArrayList<Playlist> getRecentPlaylist() {
         return new ArrayList<Playlist>(recentPlaylists);
     }
-
 
     private static final String DISPATCH_STORAGE_QUEUE_NAME = "global_music_queue";
     private static final int MAX_AMOUNT_OF_RECENT_PLAYLIST = 3;
