@@ -2,6 +2,8 @@ package org.telegram.messenger.extended_music_player;
 
 import static org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseImpl.GLOBAL_MUSIC_DB_FILE_NAME;
 
+import androidx.annotation.UiThread;
+
 import org.telegram.SQLite.SQLiteException;
 import org.telegram.SQLite.extended_music_player.GlobalMusicDatabase;
 import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseImpl;
@@ -18,8 +20,9 @@ import java.io.File;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
-
 
 public class GlobalMusicControllerImpl implements GlobalMusicController {
 
@@ -28,6 +31,8 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     private GlobalMusicDatabase database;
 
     private final Deque<Playlist> recentPlaylists = new ArrayDeque<>(MAX_AMOUNT_OF_RECENT_PLAYLIST);
+    private volatile RecentPlaylistState recentPlaylistsState = RecentPlaylistState.LOADING;
+    private final List<RecentPlaylistListener> recentPlaylistListeners = new CopyOnWriteArrayList<>();
 
     public static GlobalMusicControllerImpl getInstance() {
         GlobalMusicControllerImpl localInstance = Instance;
@@ -50,11 +55,41 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
                 database = new GlobalMusicDatabaseImpl(dbFile);
 
                 ArrayList<Playlist> savedRecentPlaylist = database.getRecentPlaylists(MAX_AMOUNT_OF_RECENT_PLAYLIST);
-                recentPlaylists.addAll(savedRecentPlaylist);
+
+                AndroidUtilities.runOnUIThread(() -> {
+                    recentPlaylists.clear();
+                    recentPlaylists.addAll(savedRecentPlaylist);
+                    recentPlaylistsState = RecentPlaylistState.READY;
+                    for (RecentPlaylistListener l : recentPlaylistListeners) {
+                        l.onStateChanged(recentPlaylistsState, getRecentPlaylist());
+                    }
+                });
             } catch (SQLiteException e) {
+
+                AndroidUtilities.runOnUIThread(() -> {
+                    recentPlaylistsState = RecentPlaylistState.ERROR;
+                    for (RecentPlaylistListener l : recentPlaylistListeners) {
+                        l.onStateChanged(recentPlaylistsState, getRecentPlaylist());
+                    }
+                });
                 FileLog.e(e);
                 throw new RuntimeException(e);
             }
+        });
+    }
+
+    @Override
+    public void addListener(RecentPlaylistListener recentPlaylistListener) {
+        AndroidUtilities.runOnUIThread(() -> {
+            recentPlaylistListeners.add(recentPlaylistListener);
+            recentPlaylistListener.onStateChanged(recentPlaylistsState, getRecentPlaylist());
+        });
+    }
+
+    @Override
+    public void removeListener(RecentPlaylistListener recentPlaylistListener) {
+        AndroidUtilities.runOnUIThread(() -> {
+            recentPlaylistListeners.remove(recentPlaylistListener);
         });
     }
 
@@ -183,36 +218,39 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
         });
     }
 
+    @UiThread
     private void addPlaylistToRecent(Playlist playlist) {
-        if (recentPlaylists.remove(playlist)) {
-            recentPlaylists.addFirst(playlist);
-        } else {
-            if (recentPlaylists.size() >= MAX_AMOUNT_OF_RECENT_PLAYLIST) {
-                recentPlaylists.removeLast();
+        AndroidUtilities.runOnUIThread(() -> {
+            if (recentPlaylists.remove(playlist)) {
+                recentPlaylists.addFirst(playlist);
+            } else {
+                if (recentPlaylists.size() >= MAX_AMOUNT_OF_RECENT_PLAYLIST) {
+                    recentPlaylists.removeLast();
+                }
+                recentPlaylists.addFirst(playlist);
             }
-            recentPlaylists.addFirst(playlist);
-        }
-        int playlistId = playlist.getId();
-        long timestamp = System.currentTimeMillis();
-        storageQueue.postRunnable(() -> {
-            try {
-                database.markPlaylistAsRecent(playlistId, timestamp);
-            } catch (SQLiteException e) {
-                FileLog.e(e);
-                e.printStackTrace();
-                AndroidUtilities.runOnUIThread(() -> {
-                    NotificationCenter.getGlobalInstance().postNotificationName(
-                            NotificationCenter.musicDatabaseError,
-                            "Can't mark playlist as a recent one with id: " + playlistId + " due " + e.getMessage()
-                    );
-                });
-            }
+            int playlistId = playlist.getId();
+            long timestamp = System.currentTimeMillis();
+            storageQueue.postRunnable(() -> {
+                try {
+                    database.markPlaylistAsRecent(playlistId, timestamp);
+                } catch (SQLiteException e) {
+                    FileLog.e(e);
+                    e.printStackTrace();
+                    AndroidUtilities.runOnUIThread(() -> {
+                        NotificationCenter.getGlobalInstance().postNotificationName(
+                                NotificationCenter.musicDatabaseError,
+                                "Can't mark playlist as a recent one with id: " + playlistId + " due " + e.getMessage()
+                        );
+                    });
+                }
+            });
         });
     }
 
-    @Override
-    public ArrayList<Playlist> getRecentPlaylist() {
-        return new ArrayList<Playlist>(recentPlaylists);
+    @UiThread
+    private ArrayList<Playlist> getRecentPlaylist() {
+        return new ArrayList<Playlist>(recentPlaylists); //GC can be optimized
     }
 
     private static final String DISPATCH_STORAGE_QUEUE_NAME = "global_music_queue";

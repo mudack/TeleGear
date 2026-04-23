@@ -98,6 +98,8 @@ import org.telegram.messenger.audioinfo.AudioInfo;
 import org.telegram.messenger.chromecast.ChromecastController;
 import org.telegram.messenger.extended_music_player.GlobalMusicController;
 import org.telegram.messenger.extended_music_player.GlobalMusicControllerImpl;
+import org.telegram.messenger.extended_music_player.RecentPlaylistListener;
+import org.telegram.messenger.extended_music_player.RecentPlaylistState;
 import org.telegram.messenger.extended_music_player.entity.Playlist;
 import org.telegram.messenger.extended_music_player.entity.music.adapters.message_object.MessageObjectAdapter;
 import org.telegram.messenger.extended_music_player.entity.music.MusicData;
@@ -121,6 +123,7 @@ import org.telegram.ui.Cells.AudioPlayerCell;
 import org.telegram.ui.ChatActivity;
 import org.telegram.ui.ChooseQualityLayout;
 import org.telegram.ui.Components.Forum.ForumUtilities;
+import org.telegram.ui.Components.extended_music_player.InfiniteProgressView;
 import org.telegram.ui.DialogsActivity;
 import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
@@ -276,6 +279,8 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
             }
         }
     };
+
+    private final GlobalMusicController globalMusicController = GlobalMusicControllerImpl.getInstance();
 
     public AudioPlayerAlert(final Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context, true, resourcesProvider);
@@ -1882,13 +1887,13 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
             }
         } else if (id == NotificationCenter.musicIdsLoaded) {
             updateTitle(false);
-        } else if (id == NotificationCenter.musicDatabaseError){
+        } else if (id == NotificationCenter.musicDatabaseError) {
             String messageError = (String) args[0];
             Toast.makeText(parentActivity, parentActivity.getString(R.string.playlist_error_message, messageError), Toast.LENGTH_SHORT).show();
-        } else if (id == NotificationCenter.musicPlaylistCreated){
+        } else if (id == NotificationCenter.musicPlaylistCreated) {
             String newPlaylistName = (String) args[0];
             Toast.makeText(parentActivity, parentActivity.getString(R.string.playlist_new_playlist_successfully_created, newPlaylistName), Toast.LENGTH_SHORT).show();
-        } else if (id == NotificationCenter.musicAddedToPlaylist){
+        } else if (id == NotificationCenter.musicAddedToPlaylist) {
             String playlistName = (String) args[0];
             String addedMusicName = (String) args[1];
             Toast.makeText(parentActivity, parentActivity.getString(R.string.playlist_added_successfully_music_to_playlist, addedMusicName, playlistName), Toast.LENGTH_SHORT).show();
@@ -2794,7 +2799,6 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
             });
         } else {
             final MessagesController.SavedMusicIds musicIds = MessagesController.getInstance(currentAccount).getSavedMusicIds();
-            final GlobalMusicController globalMusicController = GlobalMusicControllerImpl.getInstance();
             final TLRPC.Document document = messageObject.getDocument();
             final long documentId = document != null ? document.id : 0;
 
@@ -2809,7 +2813,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
                         MessageObject receivedMessageObject = musicData.getMessageLink().getMessageObject();
 
                         mediaController.playMessage(receivedMessageObject);
-                        String msg = "rqrwrq clientUserId "+ clientUserId +" messageDataChatType: " + musicData;
+                        String msg = "rqrwrq clientUserId " + clientUserId + " messageDataChatType: " + musicData;
                         System.out.println(msg);
                         Toast.makeText(getContext(), msg, Toast.LENGTH_LONG).show();
                     }
@@ -2822,26 +2826,41 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
                     }
             );
             itemOptionsOfAddToPlaylist.addGap();
-            ArrayList<Playlist> recentPlaylists = globalMusicController.getRecentPlaylist();
-            if(recentPlaylists.isEmpty()) {
-                itemOptionsOfAddToPlaylist.addText(getString(R.string.playlist_no_local_playlist_text), 12, dp(200));
-            } else {
-                recentPlaylists.forEach((playlist -> {
-                    itemOptionsOfAddToPlaylist.add(
-                            playlist.getName(),
-                            () -> {
-                                globalMusicController.addMusicToPlaylist(playlist, musicData);
-                                o.dismiss();
-                            }
-                    );
-                }));
-            }
-            itemOptionsOfAddToPlaylist.addGap();
+            RecentPlaylistListener recentPlaylistListener = new RecentPlaylistListener() {
+                @Override
+                public void onStateChanged(RecentPlaylistState recentPlaylistState, ArrayList<Playlist> recentPlaylists) {
+                    if (recentPlaylistState == RecentPlaylistState.READY) {
+                        if (recentPlaylists.isEmpty()) {
+                            itemOptionsOfAddToPlaylist.addText(getString(R.string.playlist_no_local_playlist_text), 12, dp(200)); //todo replace hardcode with resources
+                        } else {
+                            recentPlaylists.forEach((playlist -> {
+                                itemOptionsOfAddToPlaylist.add(
+                                        playlist.getName(),
+                                        () -> {
+                                            globalMusicController.addMusicToPlaylist(playlist, musicData);
+                                            o.dismiss();
+                                        }
+                                );
+                            }));
+                        }
+                    } else if (recentPlaylistState == RecentPlaylistState.LOADING) {
+                        InfiniteProgressView infiniteProgressView = new InfiniteProgressView(getContext(), dp(16));
+                        infiniteProgressView.setColor(getThemedColor(Theme.key_chat_inInstant));
+                        infiniteProgressView.setPadding(dp(22), 0, dp(22), 0);
+                        itemOptionsOfAddToPlaylist.addView(infiniteProgressView);
+                    } else if (recentPlaylistState == RecentPlaylistState.ERROR) {
+                        itemOptionsOfAddToPlaylist.addText(getString(R.string.default_error_msg), 12, dp(200)); //todo replace with error text
+                    }
 
-            //todo make add a small recycler view for itemOptionsOfAddToPlaylist to show list of recent used playList
-            // itemOptionsOfAddToPlaylist.add(R.drawable.ic_ab_back, getString(R.string.Back), itemOptions::closeSwipeback);
-            itemOptionsOfAddToPlaylist.addText(getString(R.string.playlist_add_to_info), 12, dp(200)); //todo move to dimens
+                    itemOptionsOfAddToPlaylist.addGap();
+                    itemOptionsOfAddToPlaylist.addText(getString(R.string.playlist_add_to_info), 12, dp(200)); //todo move to dimens
+                }
 
+            };
+            globalMusicController.addListener(recentPlaylistListener);
+            o.setOnDismiss(() -> {
+                globalMusicController.removeListener(recentPlaylistListener);
+            });
             final ItemOptions o2 = o.makeSwipeback();
             o2.add(R.drawable.ic_ab_back, getString(R.string.Back), o::closeSwipeback);
             o2.addGap();
@@ -2910,7 +2929,6 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
                 dismiss();
             });
         }
-
         o.setGravity(LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT);
         o.show();
     }
