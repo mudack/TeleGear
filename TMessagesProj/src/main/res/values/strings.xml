@@ -10535,6 +10535,7 @@
     <string name="playlist_no_local_playlist_text">No local playlist.</string>
 
     <string name="playlist_new_playlist_dialog_create_btn_text">Create</string>
-    <string name="playlist_new_playlist_dialog_et_hint">Enter playlist name</string>
+    <string name="playlist_new_playlist_dialog_et_hint">Enter new playlist name</string>
     <string name="playlist_error_message">Error: %s</string>
+    <string name="playlist_error_message_empty_playlist_name">Playlist name can\'t be empty</string>
 </resources>

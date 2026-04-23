@@ -48,6 +48,7 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -120,6 +121,7 @@ import org.telegram.ui.ActionBar.ThemeDescription;
 import org.telegram.ui.Adapters.FiltersView;
 import org.telegram.ui.CastSync;
 import org.telegram.ui.Cells.AudioPlayerCell;
+import org.telegram.ui.Cells.EditTextCell;
 import org.telegram.ui.ChatActivity;
 import org.telegram.ui.ChooseQualityLayout;
 import org.telegram.ui.Components.Forum.ForumUtilities;
@@ -2936,29 +2938,41 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
     private void showCreateNewPlayListDialog(Context context, Consumer<String> onCreatePlaylist) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
 
-        EditTextBoldCursor editText = new EditTextBoldCursor(context);
-        editText.setHint(R.string.playlist_new_playlist_dialog_et_hint);
-
+        int maxLengthOfPlaylistName = 100;
+        EditTextCell editText = new EditTextCell(context, getString(R.string.playlist_new_playlist_dialog_et_hint), false, false, maxLengthOfPlaylistName, resourcesProvider);
+        editText.setShowLimitWhenEmpty(true);
+        editText.setDivider(true);
         LinearLayout container = new LinearLayout(context);
         container.setPadding(
-                AndroidUtilities.dp(24),
+                0,
                 AndroidUtilities.dp(24),
                 AndroidUtilities.dp(24),
                 0
         );
-        container.addView(editText);
+
+        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.FILL_HORIZONTAL | Gravity.LEFT, 0, 0, 0, 0));
 
         builder.setTitle(LocaleController.getString(R.string.playlist_new_playlist));
         builder.setView(container);
 
         builder.setPositiveButton(
-                LocaleController.getString(R.string.playlist_new_playlist_dialog_create_btn_text),
-                (di, which) -> onCreatePlaylist.accept(editText.getText().toString())
+                LocaleController.getString(R.string.playlist_new_playlist_dialog_create_btn_text), null
         );
 
         AlertDialog dialog = builder.create();
-
         dialog.setOnShowListener(d -> {
+            View button = ((AlertDialog) d).getButton(AlertDialog.BUTTON_POSITIVE);
+
+            button.setOnClickListener(v -> {
+                String newPlaylistName = editText.getText().toString();
+                if (newPlaylistName.isEmpty()) {
+                    Toast.makeText(context, getString(R.string.playlist_error_message_empty_playlist_name), Toast.LENGTH_SHORT).show();
+                } else {
+                    onCreatePlaylist.accept(newPlaylistName);
+                    dialog.dismiss();
+                }
+            });
+
             editText.requestFocus();
             AndroidUtilities.showKeyboard(editText);
         });
