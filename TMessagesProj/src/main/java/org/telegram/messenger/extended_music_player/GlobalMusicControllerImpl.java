@@ -1,12 +1,12 @@
 package org.telegram.messenger.extended_music_player;
 
-import static org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseImpl.GLOBAL_MUSIC_DB_FILE_NAME;
+import static org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepoImpl.GLOBAL_MUSIC_DB_FILE_NAME;
 
 import androidx.annotation.UiThread;
 
 import org.telegram.SQLite.SQLiteException;
-import org.telegram.SQLite.extended_music_player.GlobalMusicDatabase;
-import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseImpl;
+import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepo;
+import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepoImpl;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.DispatchQueue;
@@ -28,7 +28,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
 
     private static volatile GlobalMusicControllerImpl Instance;
     private final DispatchQueue storageQueue = new DispatchQueue(DISPATCH_STORAGE_QUEUE_NAME);
-    private GlobalMusicDatabase database;
+    private GlobalMusicDatabaseRepo database;
 
     private final Deque<Playlist> recentPlaylists = new ArrayDeque<>(MAX_AMOUNT_OF_RECENT_PLAYLIST);
     private volatile RecentPlaylistState recentPlaylistsState = RecentPlaylistState.LOADING;
@@ -52,7 +52,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
             try {
                 File filesDir = ApplicationLoader.getFilesDirFixed();
                 File dbFile = new File(filesDir, GLOBAL_MUSIC_DB_FILE_NAME);
-                database = new GlobalMusicDatabaseImpl(dbFile);
+                database = new GlobalMusicDatabaseRepoImpl(dbFile);
 
                 ArrayList<Playlist> savedRecentPlaylist = database.getRecentPlaylists(MAX_AMOUNT_OF_RECENT_PLAYLIST);
 

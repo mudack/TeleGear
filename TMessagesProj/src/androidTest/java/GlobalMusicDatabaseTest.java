@@ -5,8 +5,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.telegram.SQLite.SQLiteException;
-import org.telegram.SQLite.extended_music_player.GlobalMusicDatabase;
-import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseImpl;
+import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepo;
+import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepoImpl;
+import org.telegram.SQLite.extended_music_player.dao.UtilDao;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.extended_music_player.entity.MessageLink;
 import org.telegram.messenger.extended_music_player.entity.Playlist;
@@ -19,7 +20,7 @@ import java.util.ArrayList;
 
 public class GlobalMusicDatabaseTest {
 
-    private GlobalMusicDatabase db;
+    private GlobalMusicDatabaseRepo db;
     private File testDbFile;
 
     @Before
@@ -31,7 +32,7 @@ public class GlobalMusicDatabaseTest {
             testDbFile.delete();
         }
 
-        db = new GlobalMusicDatabaseImpl(testDbFile);
+        db = new GlobalMusicDatabaseRepoImpl(testDbFile);
     }
 
     @After
@@ -83,6 +84,7 @@ public class GlobalMusicDatabaseTest {
     public void testAddMusicToPlaylist() throws Exception {
         Playlist playlist = db.createPlaylist("MyPlaylist");
 
+        db.addNewGlobalLocalIdsMapping(1, TEST_GLOBAL_ACC_ID_1);
         MusicData music = createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 12L, 34);
 
         db.addMusicToPlaylist(playlist.getId(), music);
@@ -96,6 +98,27 @@ public class GlobalMusicDatabaseTest {
 
         assertEquals(music.getMessageLink().getGlobalAccountId(), link.getGlobalAccountId());
         assertEquals(music.getMessageLink().getLocalAccountId(), link.getLocalAccountId());
+        assertEquals(music.getMessageLink().getDialogId(), link.getDialogId());
+        assertEquals(music.getMessageLink().getMessageId(), link.getMessageId());
+    }
+
+    @Test
+    public void testAddMusicToPlaylist_exceptionLocalIdIsNullObj() throws Exception {
+        Playlist playlist = db.createPlaylist("MyPlaylist");
+
+        MusicData music = createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 12L, 34);
+
+        db.addMusicToPlaylist(playlist.getId(), music);
+
+        ArrayList<MessageLink> result =
+                db.getMusicLinksByPlaylistId(playlist.getId());
+
+        assertEquals(1, result.size());
+
+        MessageLink link = result.get(0);
+
+        assertEquals(music.getMessageLink().getGlobalAccountId(), link.getGlobalAccountId());
+        assertEquals(UtilDao.INT_NULL_OBJECT, link.getLocalAccountId());
         assertEquals(music.getMessageLink().getDialogId(), link.getDialogId());
         assertEquals(music.getMessageLink().getMessageId(), link.getMessageId());
     }
@@ -250,8 +273,32 @@ public class GlobalMusicDatabaseTest {
         assertEquals(p.getId(), result2.get(0).getId());
     }
 
+    @Test
+    public void testLocalAndMtprotoUserIdsInMappingTable() throws SQLiteException {
+        db.addNewGlobalLocalIdsMapping(1, 1000);
+        db.addNewGlobalLocalIdsMapping(2, 2000);
+        db.addNewGlobalLocalIdsMapping(3, 3000);
+
+        assertEquals(1, db.getLocalUserIdByMtprotoId(1000));
+        assertEquals(2, db.getLocalUserIdByMtprotoId(2000));
+        assertEquals(3, db.getLocalUserIdByMtprotoId(3000));
+    }
+
+    @Test
+    public void testLocalAndMtprotoUserIdsInMappingTable_case_userLogoutAndLoginInAnotherAcc() throws SQLiteException {
+        db.addNewGlobalLocalIdsMapping(1, 1000);
+        db.addNewGlobalLocalIdsMapping(2, 2000);
+        db.addNewGlobalLocalIdsMapping(3, 3000);
+
+        db.removeGlobalLocalIdsMappingByLocalId(2);
+
+        assertEquals(1, db.getLocalUserIdByMtprotoId(1000));
+        assertEquals(3, db.getLocalUserIdByMtprotoId(3000));
+
+        db.addNewGlobalLocalIdsMapping(2, 2222);
+
+        assertEquals(2, db.getLocalUserIdByMtprotoId(2222));
+    }
+
     private final long TEST_GLOBAL_ACC_ID_1 = 516289273;
-    private final long TEST_GLOBAL_ACC_ID_2 = 516289284;
-    private final long TEST_GLOBAL_ACC_ID_3 = 516289295;
-    private final long TEST_GLOBAL_ACC_ID_4 = 516289206;
 }

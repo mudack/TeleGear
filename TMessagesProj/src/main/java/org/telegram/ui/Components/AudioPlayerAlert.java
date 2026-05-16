@@ -2807,19 +2807,20 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
             final MusicData musicData = new MusicData(new MessageObjectAdapter(messageObject));
             final ItemOptions itemOptionsOfAddToPlaylist = o.makeSwipeback();
             itemOptionsOfAddToPlaylist.add(R.drawable.ic_ab_back, getString(R.string.Back), o::closeSwipeback);
-            itemOptionsOfAddToPlaylist.add( //todo it is for debug, remove after
-                    "tmp play it",
-                    () -> {
-                        long clientUserId = UserConfig.getInstance(currentAccount).getClientUserId();
-                        MediaController mediaController = MediaController.getInstance();
-                        MessageObject receivedMessageObject = musicData.getMessageLink().getMessageObject();
+//            itemOptionsOfAddToPlaylist.add( //todo it is for debug, remove after
+//                    "tmp play it",
+//                    () -> {
+//                        long clientUserId = UserConfig.getInstance(currentAccount).getClientUserId();
+//                        MediaController mediaController = MediaController.getInstance();
+//                        MessageObject receivedMessageObject = musicData.getMessageLink().getMessageObject();
+//
+//                        mediaController.playMessage(receivedMessageObject);
+//                        String msg = "rqrwrq clientUserId " + clientUserId + " messageDataChatType: " + musicData;
+//                        System.out.println(msg);
+//                        Toast.makeText(getContext(), msg, Toast.LENGTH_LONG).show();
+//                    }
+//            );
 
-                        mediaController.playMessage(receivedMessageObject);
-                        String msg = "rqrwrq clientUserId " + clientUserId + " messageDataChatType: " + musicData;
-                        System.out.println(msg);
-                        Toast.makeText(getContext(), msg, Toast.LENGTH_LONG).show();
-                    }
-            );
             itemOptionsOfAddToPlaylist.add(
                     R.drawable.ic_add_playlist, getString(R.string.playlist_new_playlist),
                     () -> {
@@ -2828,6 +2829,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
                     }
             );
             itemOptionsOfAddToPlaylist.addGap();
+
             RecentPlaylistListener recentPlaylistListener = new RecentPlaylistListener() {
                 @Override
                 public void onStateChanged(RecentPlaylistState recentPlaylistState, ArrayList<Playlist> recentPlaylists) {
@@ -2859,10 +2861,12 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
                 }
 
             };
+
             globalMusicController.addListener(recentPlaylistListener);
             o.setOnDismiss(() -> {
                 globalMusicController.removeListener(recentPlaylistListener);
             });
+
             final ItemOptions o2 = o.makeSwipeback();
             o2.add(R.drawable.ic_ab_back, getString(R.string.Back), o::closeSwipeback);
             o2.addGap();

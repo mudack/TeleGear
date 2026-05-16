@@ -2,12 +2,12 @@ package org.telegram.SQLite.extended_music_player;
 
 import org.telegram.SQLite.SQLiteException;
 import org.telegram.messenger.extended_music_player.entity.MessageLink;
-import org.telegram.messenger.extended_music_player.entity.music.MusicData;
 import org.telegram.messenger.extended_music_player.entity.Playlist;
+import org.telegram.messenger.extended_music_player.entity.music.MusicData;
 
 import java.util.ArrayList;
 
-public interface GlobalMusicDatabase {
+public interface GlobalMusicDatabaseRepo {
     Playlist createPlaylist(String name) throws SQLiteException;
     ArrayList<Playlist> getAllPlaylists() throws SQLiteException;
     Playlist getPlaylistById(int id) throws SQLiteException;
@@ -22,4 +22,8 @@ public interface GlobalMusicDatabase {
     ArrayList<Playlist> getRecentPlaylistsByOffset(int offset, int limit) throws SQLiteException;
     void removeRecentPlaylist(int playlistId) throws SQLiteException;
     void clearRecentPlaylists() throws SQLiteException;
+
+    void addNewGlobalLocalIdsMapping(int localUserId, long mtprotoUserId) throws SQLiteException;
+    int getLocalUserIdByMtprotoId(long mtprotoId) throws SQLiteException;
+    void removeGlobalLocalIdsMappingByLocalId(int localId) throws SQLiteException;
 }
