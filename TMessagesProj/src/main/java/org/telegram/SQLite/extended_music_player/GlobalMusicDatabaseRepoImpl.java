@@ -146,17 +146,17 @@ public class GlobalMusicDatabaseRepoImpl implements GlobalMusicDatabaseRepo {
     }
 
     @Override
-    public void addNewGlobalLocalIdsMapping(int localUserId, long mtprotoUserId) throws SQLiteException {
+    public void addNewAccIdsMapping(int localUserId, long mtprotoUserId) throws SQLiteException {
         tracksDao.addNewEntry(localUserId, mtprotoUserId);
     }
 
     @Override
-    public int getLocalUserIdByMtprotoId(long mtprotoId) throws SQLiteException {
+    public int getAccIdsMappingByMtprotoId(long mtprotoId) throws SQLiteException {
         return tracksDao.getLocalUserId(mtprotoId);
     }
 
     @Override
-    public void removeGlobalLocalIdsMappingByLocalId(int localId) throws SQLiteException {
+    public void removeAccIdsMappingByLocalId(int localId) throws SQLiteException {
         tracksDao.removeMappingEntryByLocalId(localId);
     }
 

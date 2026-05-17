@@ -1,9 +1,5 @@
 package org.telegram.SQLite.extended_music_player.dao;
 
-import static org.telegram.SQLite.extended_music_player.dao.RecentPlaylistDao.DB_RECENT_PLAYLIST_COLUMN_NAME_PLAYLIST_UID;
-import static org.telegram.SQLite.extended_music_player.dao.RecentPlaylistDao.DB_RECENT_PLAYLIST_COLUMN_NAME_UPDATED_AT;
-import static org.telegram.SQLite.extended_music_player.dao.RecentPlaylistDao.DB_RECENT_PLAYLIST_TABLE_NAME;
-
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.SQLite.SQLiteException;
 import org.telegram.SQLite.SQLitePreparedStatement;

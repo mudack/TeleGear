@@ -2,7 +2,6 @@ package org.telegram.SQLite.extended_music_player.dao;
 
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.SQLite.SQLiteException;
-import org.telegram.messenger.extended_music_player.entity.MessageLink;
 
 public class UtilDao {
     public static long getLongOrNullObject(SQLiteCursor cursor, int columnIndex) throws SQLiteException {

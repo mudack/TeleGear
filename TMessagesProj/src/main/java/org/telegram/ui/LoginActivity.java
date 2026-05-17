@@ -143,6 +143,8 @@ import org.telegram.messenger.SRPHelper;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
+import org.telegram.messenger.extended_music_player.GlobalMusicController;
+import org.telegram.messenger.extended_music_player.GlobalMusicControllerImpl;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.RequestDelegate;
 import org.telegram.tgnet.SerializedData;
@@ -1675,6 +1677,8 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
             MessagesController.getInstance(currentAccount).putDialogsEndReachedAfterRegistration();
         }
         MediaDataController.getInstance(currentAccount).loadStickersByEmojiOrName(AndroidUtilities.STICKERS_PLACEHOLDER_PACK_NAME, false, true);
+
+        GlobalMusicControllerImpl.getInstance().addNewAccIdsMapping(currentAccount, res.user.id);
 
         needFinishActivity(afterSignup, res.setup_password_required, res.otherwise_relogin_days);
     }

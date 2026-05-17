@@ -1,17 +1,7 @@
 package org.telegram.SQLite.extended_music_player.dao;
 
-import static org.telegram.SQLite.extended_music_player.dao.TracksDao.DB_TRACKS_COLUMN_NAME_DIALOG_ID;
-import static org.telegram.SQLite.extended_music_player.dao.TracksDao.DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID;
-import static org.telegram.SQLite.extended_music_player.dao.TracksDao.DB_TRACKS_COLUMN_NAME_MESSAGE_ID;
-import static org.telegram.SQLite.extended_music_player.dao.TracksDao.DB_TRACKS_COLUMN_NAME_UID;
-import static org.telegram.SQLite.extended_music_player.dao.TracksDao.DB_TRACKS_TABLE_NAME;
-
-import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.SQLite.SQLiteException;
 import org.telegram.SQLite.SQLitePreparedStatement;
-import org.telegram.messenger.extended_music_player.entity.MessageLink;
-
-import java.util.ArrayList;
 
 public class PlaylistTrackDao {
     private final org.telegram.SQLite.SQLiteDatabase database;
