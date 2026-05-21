@@ -71,17 +71,20 @@ import me.vkryl.android.animator.BoolAnimator;
 import me.vkryl.android.animator.FactorAnimator;
 
 public class MainTabsActivity extends ViewPagerActivity implements NotificationCenter.NotificationCenterDelegate, FactorAnimator.Target {
-    public static final int TABS_COUNT = 4;
+    public static final int TABS_COUNT = 5;
     private static final int POSITION_CHATS = 0;
     private static final int POSITION_CONTACTS = 1;
     private static final int POSITION_CALLS_OR_SETTINGS = 2;
     private static final int POSITION_PROFILE = 3;
+    private static final int POSITION_PLAYLIST = 4;
 
     private static final int INDEX_CHATS = 0;
     private static final int INDEX_CONTACTS = 1;
     private static final int INDEX_SETTINGS = 2;
     private static final int INDEX_CALLS = 3;
     private static final int INDEX_PROFILE = 4;
+
+    private static final int INDEX_PLAYLIST = 5;
 
     private static int indexToPosition(int index) {
         return index > 2 ? index - 1 : index;
@@ -247,7 +250,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         tabsView.setClipChildren(false);
         tabsView.setPadding(dp(DialogsActivity.MAIN_TABS_MARGIN + 4), dp(DialogsActivity.MAIN_TABS_MARGIN + 4), dp(DialogsActivity.MAIN_TABS_MARGIN + 4), dp(DialogsActivity.MAIN_TABS_MARGIN + 4));
 
-        tabs = new GlassTabView[5];
+        tabs = new GlassTabView[6]; //todo better to move the size into the const
         tabs[INDEX_CHATS] = GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.CHATS, R.string.MainTabsChats);
         tabs[INDEX_CONTACTS] = GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.CONTACTS, R.string.MainTabsContacts);
         tabs[INDEX_SETTINGS] = GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.SETTINGS, R.string.Settings);
@@ -257,6 +260,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             openAccountSelector(v);
             return true;
         });
+        tabs[INDEX_PLAYLIST] = GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.CONTACTS, R.string.MainTabsPlaylist);
 
         for (int index = 0; index < tabs.length; index++) {
             final GlassTabView view = tabs[index];
@@ -568,6 +572,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             // args.putBoolean("expandPhoto", true);
             args.putBoolean("hasMainTabs", true);
             return new ProfileActivity(args);
+        } else if (position == POSITION_PLAYLIST) {
+            return new
         }
         return null;
     }
