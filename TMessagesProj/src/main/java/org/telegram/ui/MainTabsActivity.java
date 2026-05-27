@@ -89,7 +89,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
 
     private static int indexToPosition(int index) {
-        return index > 2 ? index - 1 : index;
+        return index > 3 ? index - 1 : index;
     }
 
 
@@ -545,6 +545,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
     @Override
     protected BaseFragment createBaseFragmentAt(int position) {
+        System.out.println("position: "+ position);
         if (position == POSITION_CONTACTS) {
             Bundle args = new Bundle();
             args.putBoolean("needPhonebook", true);
@@ -576,7 +577,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             return new ProfileActivity(args);
         } else if (position == POSITION_PLAYLIST) {
 //            return null;
-            return new PlaylistActivity(); //todo impl
+            throw new RuntimeException("PlaylistScreen is not implemented");
+//            return new PlaylistActivity(); //todo impl
         }
         return null;
     }
