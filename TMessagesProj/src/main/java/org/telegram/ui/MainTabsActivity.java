@@ -576,9 +576,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             args.putBoolean("hasMainTabs", true);
             return new ProfileActivity(args);
         } else if (position == POSITION_PLAYLIST) {
-//            return null;
-            throw new RuntimeException("PlaylistScreen is not implemented");
-//            return new PlaylistActivity(); //todo impl
+            return new PlaylistActivity();
         }
         return null;
     }
