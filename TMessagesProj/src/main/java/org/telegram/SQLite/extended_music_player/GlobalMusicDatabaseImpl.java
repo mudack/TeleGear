@@ -489,7 +489,7 @@ public class GlobalMusicDatabaseImpl implements GlobalMusicDatabase {
     private static final String DB_PT_COLUMN_NAME_PLAYLIST_UID = "playlist_uid";
     private static final String DB_PT_COLUMN_NAME_TRACK_UID = "track_uid";
 
-    //PLAYLIST_TRACKS TABLE
+    //RECENT_PLAYLIST TABLE
     private static final String DB_RECENT_PLAYLIST_TABLE_NAME = "user_recent_playlists";
     private static final String DB_RECENT_PLAYLIST_COLUMN_NAME_PLAYLIST_UID = "playlist_uid";
     private static final String DB_RECENT_PLAYLIST_COLUMN_NAME_UPDATED_AT = "updated_at";

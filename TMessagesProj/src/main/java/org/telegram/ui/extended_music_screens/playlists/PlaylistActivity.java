@@ -2,6 +2,7 @@ package org.telegram.ui.extended_music_screens.playlists;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
+import static org.telegram.ui.MainTabsActivity.ARGS_NAME_HAS_MAIN_TABS;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -10,6 +11,7 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
+import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -41,6 +43,7 @@ import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BackDrawable;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeDescription;
 import org.telegram.ui.Cells.EditTextCell;
 import org.telegram.ui.Components.EmptyTextProgressView;
 import org.telegram.ui.Components.FragmentFloatingButton;
@@ -57,6 +60,16 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 public class PlaylistActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate, MainTabsActivity.TabFragmentDelegate {
+
+    private static final boolean ARGS_NAME_HAS_MAIN_TABS_DEFAULT_VALUE = false;
+
+    public PlaylistActivity() {
+        super();
+    }
+
+    public PlaylistActivity(Bundle args) {
+        super(args);
+    }
 
     private RecyclerListView listView;
     private LinearLayoutManager layoutManager;
@@ -83,10 +96,11 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
     public boolean onFragmentCreate() {
         super.onFragmentCreate();
         if (arguments != null) {
-            hasMainTabs = arguments.getBoolean("hasMainTabs", true);
+            hasMainTabs = arguments.getBoolean(ARGS_NAME_HAS_MAIN_TABS, ARGS_NAME_HAS_MAIN_TABS_DEFAULT_VALUE);
         } else {
-            hasMainTabs = true;
+            hasMainTabs = ARGS_NAME_HAS_MAIN_TABS_DEFAULT_VALUE;
         }
+
         additionNavigationBarHeight = hasMainTabs ? dp(DialogsActivity.MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
         additionFloatingButtonOffset = hasMainTabs ? dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN) : 0;
 
@@ -127,12 +141,18 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
             @Override
             protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
                 measureChildWithMargins(actionBar, widthMeasureSpec, 0, heightMeasureSpec, 0);
-                LayoutParams searchParams = (LayoutParams) searchField.getLayoutParams();
-                searchParams.topMargin = actionBar.getMeasuredHeight() + dp(6);
-                LayoutParams emptyParams = (LayoutParams) emptyView.getLayoutParams();
-                emptyParams.topMargin = actionBar.getMeasuredHeight() + dp(52);
-                LayoutParams shadowParams = (LayoutParams) headerShadowView.getLayoutParams();
-                shadowParams.topMargin = actionBar.getMeasuredHeight();
+                if (searchField != null) {
+                    LayoutParams searchParams = (LayoutParams) searchField.getLayoutParams();
+                    searchParams.topMargin = actionBar.getMeasuredHeight() + dp(6);
+                }
+                if (emptyView != null) {
+                    LayoutParams emptyParams = (LayoutParams) emptyView.getLayoutParams();
+                    emptyParams.topMargin = actionBar.getMeasuredHeight() + dp(52);
+                }
+                if (headerShadowView != null) {
+                    LayoutParams shadowParams = (LayoutParams) headerShadowView.getLayoutParams();
+                    shadowParams.topMargin = actionBar.getMeasuredHeight();
+                }
                 checkListViewPadding();
                 super.onMeasure(widthMeasureSpec, heightMeasureSpec);
             }
@@ -252,6 +272,9 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
         } else if (id == NotificationCenter.musicDatabaseError) {
             loading = false;
             updateEmptyView();
+            // TODO: musicDatabaseError is global for every GlobalMusicController operation.
+            // Pass an operation/request marker or use dedicated notifications before production,
+            // otherwise this screen can show unrelated errors from player/add-to-playlist flows.
             if (getParentActivity() != null && args.length > 0) {
                 Toast.makeText(getParentActivity(), LocaleController.formatString(R.string.playlist_error_message, String.valueOf(args[0])), Toast.LENGTH_SHORT).show();
             }
@@ -260,7 +283,7 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
 
     @Override
     public void onParentScrollToTop() {
-        if (listView == null || layoutManager == null) {
+        if (listView == null || layoutManager == null || scrollHelper == null) {
             return;
         }
         if (layoutManager.findFirstVisibleItemPosition() < 15) {
@@ -302,12 +325,21 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
     private void updateFilteredPlaylists() {
         filteredPlaylists.clear();
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.US);
+        String normalizedTranslitQuery = LocaleController.getInstance().getTranslitString(normalizedQuery).toLowerCase(Locale.US);
         if (TextUtils.isEmpty(normalizedQuery)) {
             filteredPlaylists.addAll(playlists);
         } else {
             for (int i = 0; i < playlists.size(); i++) {
                 Playlist playlist = playlists.get(i);
-                if (playlist.getName() != null && playlist.getName().toLowerCase(Locale.US).contains(normalizedQuery)) {
+                String name = playlist.getName();
+                if (name == null) {
+                    continue;
+                }
+                String normalizedName = name.toLowerCase(Locale.US);
+                String normalizedTranslitName = LocaleController.getInstance().getTranslitString(normalizedName).toLowerCase(Locale.US);
+                if (normalizedName.contains(normalizedQuery) ||
+                        normalizedTranslitName.contains(normalizedQuery) ||
+                        normalizedName.contains(normalizedTranslitQuery)) {
                     filteredPlaylists.add(playlist);
                 }
             }
@@ -353,8 +385,8 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
         editText.setDivider(true);
 
         LinearLayout container = new LinearLayout(context);
-        container.setPadding(0, dp(24), dp(24), 0);
-        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.FILL_HORIZONTAL | Gravity.LEFT));
+        container.setPadding(LocaleController.isRTL ? dp(24) : 0, dp(24), LocaleController.isRTL ? 0 : dp(24), 0);
+        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.FILL_HORIZONTAL | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT)));
 
         builder.setTitle(getString(R.string.playlist_new_playlist));
         builder.setView(container);
@@ -381,6 +413,43 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
     @Override
     public int getThemedColor(int key) {
         return Theme.getColor(key, resourceProvider);
+    }
+
+    @Override
+    public ArrayList<ThemeDescription> getThemeDescriptions() {
+        ArrayList<ThemeDescription> themeDescriptions = new ArrayList<>();
+
+        ThemeDescription.ThemeDescriptionDelegate cellDelegate = () -> {
+            if (listView != null) {
+                int count = listView.getChildCount();
+                for (int i = 0; i < count; i++) {
+                    View child = listView.getChildAt(i);
+                    if (child instanceof PlaylistCell) {
+                        ((PlaylistCell) child).updateColors();
+                    }
+                }
+            }
+            if (fragmentView != null) {
+                fragmentView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
+            }
+            if (actionBar != null) {
+                actionBar.updateColors();
+            }
+        };
+
+        themeDescriptions.add(new ThemeDescription(fragmentView, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_windowBackgroundGray));
+        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_LISTGLOWCOLOR, null, null, null, null, Theme.key_actionBarDefault));
+        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_SELECTOR, null, null, null, null, Theme.key_listSelector));
+        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_ITEMSCOLOR, null, null, null, null, Theme.key_actionBarDefaultIcon));
+        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_TITLECOLOR, null, null, null, null, Theme.key_actionBarDefaultTitle));
+        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SELECTORCOLOR, null, null, null, null, Theme.key_actionBarDefaultSelector));
+        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{PlaylistCell.class}, null, null, cellDelegate, Theme.key_windowBackgroundWhite));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{PlaylistCell.class}, new String[]{"nameTextView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{PlaylistCell.class}, new String[]{"imageView"}, null, null, cellDelegate, Theme.key_featuredStickers_addButton));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{PlaylistCell.class}, new String[]{"moreView"}, null, null, cellDelegate, Theme.key_windowBackgroundWhiteGrayText3));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{PlaylistCell.class}, null, null, cellDelegate, Theme.key_divider));
+
+        return themeDescriptions;
     }
 
     private class PlaylistAdapter extends RecyclerListView.SelectionAdapter {
@@ -420,6 +489,7 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
     private static class PlaylistCell extends FrameLayout {
 
         private final TextView nameTextView;
+        private final FrameLayout iconBackground;
         private final ImageView imageView;
         private final ImageView moreView;
         private final Paint dividerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -434,42 +504,57 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
             setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));
             setPadding(0, 0, 0, 0);
 
-            FrameLayout iconBackground = new FrameLayout(context);
-            Drawable background = Theme.createRoundRectDrawable(dp(14), ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), 34));
-            iconBackground.setBackground(background);
+            iconBackground = new FrameLayout(context);
             addView(iconBackground, LayoutHelper.createFrame(48, 48, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL, 12, 0, 12, 0));
 
             imageView = new ImageView(context);
             imageView.setScaleType(ImageView.ScaleType.CENTER);
             imageView.setImageResource(R.drawable.files_music);
-            imageView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), PorterDuff.Mode.SRC_IN));
             iconBackground.addView(imageView, LayoutHelper.createFrame(28, 28, Gravity.CENTER));
 
             nameTextView = new TextView(context);
-            nameTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
             nameTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
             nameTextView.setTypeface(AndroidUtilities.bold());
             nameTextView.setSingleLine(true);
             nameTextView.setEllipsize(TextUtils.TruncateAt.END);
             nameTextView.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
-            addView(nameTextView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.CENTER_VERTICAL | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), 72, 0, 64, 0));
+            addView(nameTextView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.CENTER_VERTICAL | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), LocaleController.isRTL ? 64 : 72, 0, LocaleController.isRTL ? 72 : 64, 0));
 
             moreView = new ImageView(context);
             moreView.setScaleType(ImageView.ScaleType.CENTER);
             moreView.setImageResource(R.drawable.mini_more_dots);
-            moreView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText3, resourcesProvider), PorterDuff.Mode.SRC_IN));
-            moreView.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector, resourcesProvider), 1, dp(20)));
+            moreView.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
             moreView.setOnClickListener(v -> {
                 // todo Playlist options will be implemented later.
             });
             addView(moreView, LayoutHelper.createFrame(48, 48, (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL, 6, 0, 6, 0));
 
-            dividerPaint.setColor(Theme.getColor(Theme.key_divider, resourcesProvider));
+            updateColors();
         }
 
         private void setPlaylist(Playlist playlist, boolean divider) {
             nameTextView.setText(playlist.getName());
             needDivider = divider;
+            invalidate();
+        }
+
+        private void updateColors() {
+            setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));
+            if (iconBackground != null) {
+                Drawable background = Theme.createRoundRectDrawable(dp(14), ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), 34));
+                iconBackground.setBackground(background);
+            }
+            if (imageView != null) {
+                imageView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), PorterDuff.Mode.SRC_IN));
+            }
+            if (nameTextView != null) {
+                nameTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
+            }
+            if (moreView != null) {
+                moreView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText3, resourcesProvider), PorterDuff.Mode.SRC_IN));
+                moreView.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector, resourcesProvider), 1, dp(20)));
+            }
+            dividerPaint.setColor(Theme.getColor(Theme.key_divider, resourcesProvider));
             invalidate();
         }
 

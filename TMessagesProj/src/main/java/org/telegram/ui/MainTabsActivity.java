@@ -72,6 +72,8 @@ import me.vkryl.android.animator.BoolAnimator;
 import me.vkryl.android.animator.FactorAnimator;
 
 public class MainTabsActivity extends ViewPagerActivity implements NotificationCenter.NotificationCenterDelegate, FactorAnimator.Target {
+
+    public static final String ARGS_NAME_HAS_MAIN_TABS = "hasMainTabs";
     public static final int TABS_COUNT = 5;
     private static final int POSITION_CHATS = 0;
     private static final int POSITION_CONTACTS = 1;
@@ -536,7 +538,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             bundle = new Bundle();
         }
 
-        bundle.putBoolean("hasMainTabs", true);
+        bundle.putBoolean(ARGS_NAME_HAS_MAIN_TABS, true);
         dialogsActivity = new DialogsActivity(bundle);
         dialogsActivity.setMainTabsActivityController(new MainTabsActivityControllerImpl());
         putFragmentAtPosition(POSITION_CHATS, dialogsActivity);
@@ -550,21 +552,21 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             Bundle args = new Bundle();
             args.putBoolean("needPhonebook", true);
             args.putBoolean("needFinishFragment", false);
-            args.putBoolean("hasMainTabs", true);
+            args.putBoolean(ARGS_NAME_HAS_MAIN_TABS, true);
             return new ContactsActivity(args);
         } else if (position == POSITION_CALLS_OR_SETTINGS) {
             if (getUserConfig().showCallsTab) {
                 Bundle args = new Bundle();
                 args.putBoolean("needFinishFragment", false);
-                args.putBoolean("hasMainTabs", true);
+                args.putBoolean(ARGS_NAME_HAS_MAIN_TABS, true);
                 return new CallLogActivity(args);
             }
             Bundle args = new Bundle();
-            args.putBoolean("hasMainTabs", true);
+            args.putBoolean(ARGS_NAME_HAS_MAIN_TABS, true);
             return new SettingsActivity(args);
         } else if (position == POSITION_CHATS) {
             Bundle args = new Bundle();
-            args.putBoolean("hasMainTabs", true);
+            args.putBoolean(ARGS_NAME_HAS_MAIN_TABS, true);
             dialogsActivity = new DialogsActivity(args);
             dialogsActivity.setMainTabsActivityController(new MainTabsActivityControllerImpl());
             return dialogsActivity;
@@ -573,10 +575,12 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             args.putLong("user_id", UserConfig.getInstance(currentAccount).getClientUserId());
             args.putBoolean("my_profile", true);
             // args.putBoolean("expandPhoto", true);
-            args.putBoolean("hasMainTabs", true);
+            args.putBoolean(ARGS_NAME_HAS_MAIN_TABS, true);
             return new ProfileActivity(args);
         } else if (position == POSITION_PLAYLIST) {
-            return new PlaylistActivity();
+            Bundle args = new Bundle();
+            args.putBoolean(ARGS_NAME_HAS_MAIN_TABS, true);
+            return new PlaylistActivity(args);
         }
         return null;
     }
