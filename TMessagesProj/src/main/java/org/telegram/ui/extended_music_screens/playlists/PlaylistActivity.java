@@ -46,6 +46,7 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeDescription;
 import org.telegram.ui.Cells.EditTextCell;
 import org.telegram.ui.Components.EmptyTextProgressView;
+import org.telegram.ui.Components.FragmentContextView;
 import org.telegram.ui.Components.FragmentFloatingButton;
 import org.telegram.ui.Components.FragmentSearchField;
 import org.telegram.ui.Components.LayoutHelper;
@@ -79,6 +80,8 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
     private FragmentSearchField searchField;
     private FragmentFloatingButton floatingButton;
     private HeaderShadowView headerShadowView;
+    private FragmentContextView fragmentContextView;
+    private FrameLayout fragmentContextViewWrapper;
 
     private final ArrayList<Playlist> playlists = new ArrayList<>();
     private final ArrayList<Playlist> filteredPlaylists = new ArrayList<>();
@@ -143,15 +146,19 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
                 measureChildWithMargins(actionBar, widthMeasureSpec, 0, heightMeasureSpec, 0);
                 if (searchField != null) {
                     LayoutParams searchParams = (LayoutParams) searchField.getLayoutParams();
-                    searchParams.topMargin = actionBar.getMeasuredHeight() + dp(6);
+                    searchParams.topMargin = actionBar.getMeasuredHeight() + getFragmentContextViewHeight() + dp(6);
                 }
                 if (emptyView != null) {
                     LayoutParams emptyParams = (LayoutParams) emptyView.getLayoutParams();
-                    emptyParams.topMargin = actionBar.getMeasuredHeight() + dp(52);
+                    emptyParams.topMargin = actionBar.getMeasuredHeight() + getFragmentContextViewHeight() + dp(52);
                 }
                 if (headerShadowView != null) {
                     LayoutParams shadowParams = (LayoutParams) headerShadowView.getLayoutParams();
-                    shadowParams.topMargin = actionBar.getMeasuredHeight();
+                    shadowParams.topMargin = actionBar.getMeasuredHeight() + getFragmentContextViewHeight();
+                }
+                if (fragmentContextViewWrapper != null) {
+                    LayoutParams contextParams = (LayoutParams) fragmentContextViewWrapper.getLayoutParams();
+                    contextParams.topMargin = actionBar.getMeasuredHeight();
                 }
                 checkListViewPadding();
                 super.onMeasure(widthMeasureSpec, heightMeasureSpec);
@@ -182,7 +189,7 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
             if (playlist == null) {
                 return;
             }
-            // Opening playlist details is intentionally left for the next step.
+            presentFragment(new DetailedPlaylistActivity(DetailedPlaylistActivity.createArgs(playlist)));
         });
         scrollHelper = new RecyclerAnimationScrollHelper(listView, layoutManager);
         contentView.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
@@ -215,6 +222,25 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
         contentView.addView(floatingButton, FragmentFloatingButton.createDefaultLayoutParams());
 
         contentView.addView(actionBar);
+
+        fragmentContextViewWrapper = new FrameLayout(context);
+        fragmentContextViewWrapper.setVisibility(View.GONE);
+        fragmentContextView = new FragmentContextView(context, this, false, resourceProvider) {
+            @Override
+            public void setVisibility(int visibility) {
+                if (fragmentContextViewWrapper != null) {
+                    fragmentContextViewWrapper.setVisibility(visibility);
+                    checkListViewPadding();
+                    if (fragmentView != null) {
+                        fragmentView.requestLayout();
+                    }
+                }
+            }
+        };
+        fragmentContextView.setSupportsCalls(false);
+        fragmentContextView.isInsideBubble = true;
+        fragmentContextViewWrapper.addView(fragmentContextView);
+        contentView.addView(fragmentContextViewWrapper, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 36, Gravity.TOP | Gravity.LEFT));
 
         headerShadowView = new HeaderShadowView(context, parentLayout);
         headerShadowView.setShadowVisible(false, false);
@@ -307,13 +333,17 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
         }
         listView.setPadding(
                 0,
-                actionBar.getMeasuredHeight() + dp(56),
+                actionBar.getMeasuredHeight() + getFragmentContextViewHeight() + dp(56),
                 0,
                 navigationBarHeight + additionNavigationBarHeight + dp(10)
         );
         if (emptyView != null) {
             emptyView.setPadding(0, 0, 0, navigationBarHeight + additionNavigationBarHeight);
         }
+    }
+
+    private int getFragmentContextViewHeight() {
+        return fragmentContextViewWrapper != null && fragmentContextViewWrapper.getVisibility() == View.VISIBLE ? dp(36) : 0;
     }
 
     private void checkFloatingButtonPosition() {
@@ -431,6 +461,9 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
             }
             if (fragmentView != null) {
                 fragmentView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
+            }
+            if (fragmentContextView != null) {
+                fragmentContextView.updateColors();
             }
             if (actionBar != null) {
                 actionBar.updateColors();

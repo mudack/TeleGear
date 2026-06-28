@@ -35,7 +35,7 @@ public class TracksDao {
 
         database.executeFast("CREATE TABLE IF NOT EXISTS " + DB_ACC_IDS_MAPPING_TABLE_NAME + " (" +
                 DB_ACC_IDS_MAPPING_COLUMN_NAME_LOCAL_ID + " INTEGER PRIMARY KEY, " +
-                DB_ACC_IDS_MAPPING_COLUMN_NAME_MTPROTO_ID + " REAL NOT NULL, " +
+                DB_ACC_IDS_MAPPING_COLUMN_NAME_MTPROTO_ID + " INTEGER NOT NULL, " +
                 " UNIQUE(" + DB_ACC_IDS_MAPPING_COLUMN_NAME_MTPROTO_ID + ")" +
                 ")").stepThis().dispose();
     }
@@ -92,8 +92,9 @@ public class TracksDao {
                 "SELECT t.%s, t.%s, t.%s, t.%s, " +
                         "t.%s, t.%s, t.%s," +
                         " a.%s " +
-                        "FROM %s t WHERE %s=%s" +
-                        "LEFT JOIN %s a ON t.%s = a.%s",
+                        "FROM %s t " +
+                        "LEFT JOIN %s a ON t.%s = a.%s " +
+                        "WHERE t.%s = ?",
                 DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID,        // 0
                 DB_TRACKS_COLUMN_NAME_DIALOG_ID,            // 1
                 DB_TRACKS_COLUMN_NAME_MESSAGE_ID,           // 2
@@ -106,13 +107,12 @@ public class TracksDao {
                 DB_ACC_IDS_MAPPING_COLUMN_NAME_LOCAL_ID,    // 7
 
                 DB_TRACKS_TABLE_NAME,
-                DB_TRACKS_COLUMN_NAME_UID,
-                id,
                 DB_ACC_IDS_MAPPING_TABLE_NAME,
                 DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID,
-                DB_ACC_IDS_MAPPING_COLUMN_NAME_MTPROTO_ID
+                DB_ACC_IDS_MAPPING_COLUMN_NAME_MTPROTO_ID,
+                DB_TRACKS_COLUMN_NAME_UID
         );
-        SQLiteCursor cursor = database.queryFinalized(query);
+        SQLiteCursor cursor = database.queryFinalized(query, id);
 
         while (cursor.next()) {
         /* documentation
@@ -137,7 +137,8 @@ public class TracksDao {
             String performer = cursor.stringValue(5);
             double durationInSec = cursor.doubleValue(6);
 
-            int localAccountId = cursor.intValue(7);
+            int localAccountId = UtilDao.getIntOrNullObject(cursor, 7);
+
             MessageLink link = new MessageLink(globalUserId, localAccountId, dialogId, messageId);
             MusicMetaData musicMetaData = new MusicMetaData(title, fileName, performer, durationInSec);
             music = new MusicData(link, musicMetaData);
@@ -270,7 +271,12 @@ public class TracksDao {
                         "INNER JOIN " + DB_PT_TABLE_NAME + " pt ON t." + DB_TRACKS_COLUMN_NAME_UID + " = pt." + DB_PT_COLUMN_NAME_TRACK_UID + " " +
                         "LEFT JOIN " + DB_ACC_IDS_MAPPING_TABLE_NAME + " a " +
                         "ON t." + DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID + " = a." + DB_ACC_IDS_MAPPING_COLUMN_NAME_MTPROTO_ID + " " +
-                        "WHERE pt." + DB_PT_COLUMN_NAME_PLAYLIST_UID + " = ?",
+                        "WHERE pt." + DB_PT_COLUMN_NAME_PLAYLIST_UID + " = ? " +
+                        "ORDER BY " +
+                        "CASE WHEN t." + DB_TRACKS_COLUMN_NAME_MUSIC_TITLE + " IS NULL OR t." + DB_TRACKS_COLUMN_NAME_MUSIC_TITLE + " = '' THEN 1 ELSE 0 END, " +
+                        "t." + DB_TRACKS_COLUMN_NAME_MUSIC_TITLE + " COLLATE NOCASE ASC, " +
+                        "t." + DB_TRACKS_COLUMN_NAME_MUSIC_FILE_NAME + " COLLATE NOCASE ASC, " +
+                        "t." + DB_TRACKS_COLUMN_NAME_UID + " ASC",
                 playlistId
         );
 //        SQLiteCursor cursor = database.queryFinalized(

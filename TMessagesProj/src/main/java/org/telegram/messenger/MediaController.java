@@ -2759,6 +2759,11 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public boolean setPlaylist(ArrayList<MessageObject> messageObjects, MessageObject current, long mergeDialogId, boolean loadMusic, PlaylistGlobalSearchParams params) {
+        return setPlaylist(messageObjects, current, mergeDialogId, loadMusic, params, false);
+    }
+
+    public boolean setPlaylist(ArrayList<MessageObject> messageObjects, MessageObject current, long mergeDialogId,
+                               boolean loadMusic, PlaylistGlobalSearchParams params, boolean keepOrder) {
         if (playingMessageObject == current) {
             int newIdx = playlist.indexOf(current);
             if (newIdx >= 0) {
@@ -2786,7 +2791,11 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
                 playlistMap.put(id, messageObject);
             }
         }
-        sortPlaylist();
+        // Custom playlists already provide their display/playback order; default Telegram flows
+        // still sort by message id for chat/shared-media playback.
+        if (!keepOrder) {
+            sortPlaylist();
+        }
         currentPlaylistNum = playlist.indexOf(current);
         if (currentPlaylistNum == -1) {
             clearPlaylist();

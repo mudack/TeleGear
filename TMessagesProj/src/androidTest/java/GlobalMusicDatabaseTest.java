@@ -139,6 +139,22 @@ public class GlobalMusicDatabaseTest {
     }
 
     @Test
+    public void testGetMusicLinksByPlaylistId_sortedByTitleAsc() throws Exception {
+        Playlist playlist = db.createPlaylist("MyPlaylist");
+
+        db.addMusicToPlaylist(playlist.getId(), createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 100L, 1, "Charlie"));
+        db.addMusicToPlaylist(playlist.getId(), createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 101L, 2, "alpha"));
+        db.addMusicToPlaylist(playlist.getId(), createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 102L, 3, "Bravo"));
+
+        ArrayList<MessageLink> result = db.getMusicLinksByPlaylistId(playlist.getId());
+
+        assertEquals(3, result.size());
+        assertEquals(101L, result.get(0).getDialogId());
+        assertEquals(102L, result.get(1).getDialogId());
+        assertEquals(100L, result.get(2).getDialogId());
+    }
+
+    @Test
     public void testGetAllMusicFromLibrary() throws Exception {
         MusicData music1 = createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 1231L, 31);
         MusicData music2 = createTestMusic(TEST_GLOBAL_ACC_ID_1, 2, 1232L, 32);
@@ -169,6 +185,10 @@ public class GlobalMusicDatabaseTest {
 
 
     private MusicData createTestMusic(long globalAccId, int localAccId, long dId, int msgId) {
+        return createTestMusic(globalAccId, localAccId, dId, msgId, "The music");
+    }
+
+    private MusicData createTestMusic(long globalAccId, int localAccId, long dId, int msgId, String title) {
         MusicMessageObjectAdapterInterface messageSource = new MusicMessageObjectAdapterInterface() {
             @Override
             public boolean isMusic() {
@@ -184,7 +204,7 @@ public class GlobalMusicDatabaseTest {
 
             @Override
             public MusicMetaData getMusicMetadata() {
-                return new MusicMetaData("The music", "the_music_file_name", "The performer", 16.0);
+                return new MusicMetaData(title, "the_music_file_name", "The performer", 16.0);
             }
 
         };
