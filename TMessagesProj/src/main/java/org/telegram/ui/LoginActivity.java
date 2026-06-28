@@ -1678,9 +1678,9 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         }
         MediaDataController.getInstance(currentAccount).loadStickersByEmojiOrName(AndroidUtilities.STICKERS_PLACEHOLDER_PACK_NAME, false, true);
 
-        int localUserId = currentAccount;
-        long mtprotoUserId = res.user.id;
-        GlobalMusicControllerImpl.getInstance().addNewAccIdsMapping(localUserId, mtprotoUserId);
+        int localAccountId = currentAccount;
+        long mtprotoAccountId = res.user.id;
+        GlobalMusicControllerImpl.getInstance().addAccountIdMapping(localAccountId, mtprotoAccountId);
 
         needFinishActivity(afterSignup, res.setup_password_required, res.otherwise_relogin_days);
     }

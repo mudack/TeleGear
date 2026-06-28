@@ -15,7 +15,7 @@ public interface GlobalMusicController {
     void getMusicsByPlaylistId(int playlistId); //should emit ArrayList<MessageLink>
 
 
-    void addNewAccIdsMapping(int localUserId, long mtprotoUserId);
-    void getLocalUserIdByMtprotoId(long mtprotoId);
-    void removeAccIdsMappingByLocalId(int localId);
+    void addAccountIdMapping(int localAccountId, long mtprotoAccountId);
+    void getLocalAccountIdByMtprotoAccountId(long mtprotoAccountId);
+    void removeAccountIdMappingByLocalId(int localAccountId);
 }

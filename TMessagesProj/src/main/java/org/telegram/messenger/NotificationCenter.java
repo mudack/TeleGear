@@ -384,7 +384,7 @@ public class NotificationCenter {
     public static final int musicReceiveMusicFromPlaylist = totalEvents++; //send ArrayList<MusicData>
     public static final int musicAddedToPlaylist = totalEvents++; // sends playlistName and musicName
     public static final int musicDatabaseError = totalEvents++; //sends messageError
-    public static final int localUserIdFromMappingTable = totalEvents++; //sends int (local id from db by mtprotoId)
+    public static final int localAccountIdFromMappingTable = totalEvents++; //sends int (local id from db by mtprotoAccountId)
 
     public static boolean alreadyLogged;
 

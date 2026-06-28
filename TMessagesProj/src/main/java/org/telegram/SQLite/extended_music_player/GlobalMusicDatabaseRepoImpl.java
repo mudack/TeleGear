@@ -146,18 +146,18 @@ public class GlobalMusicDatabaseRepoImpl implements GlobalMusicDatabaseRepo {
     }
 
     @Override
-    public void addNewUserIdsMapping(int localUserId, long mtprotoUserId) throws SQLiteException {
-        tracksDao.addNewEntry(localUserId, mtprotoUserId);
+    public void addAccountIdMapping(int localAccountId, long mtprotoAccountId) throws SQLiteException {
+        tracksDao.addAccountIdMapping(localAccountId, mtprotoAccountId);
     }
 
     @Override
-    public int getLocalUserIdByMtprotoId(long mtprotoId) throws SQLiteException {
-        return tracksDao.getLocalUserId(mtprotoId);
+    public int getLocalAccountIdByMtprotoAccountId(long mtprotoAccountId) throws SQLiteException {
+        return tracksDao.getLocalAccountIdByMtprotoAccountId(mtprotoAccountId);
     }
 
     @Override
-    public void removeUserIdsMappingByLocalId(int localId) throws SQLiteException {
-        tracksDao.removeMappingEntryByLocalId(localId);
+    public void removeAccountIdMappingByLocalId(int localAccountId) throws SQLiteException {
+        tracksDao.removeAccountIdMappingByLocalId(localAccountId);
     }
 
     public static final String GLOBAL_MUSIC_DB_FILE_NAME = "global_music.db";

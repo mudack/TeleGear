@@ -15362,7 +15362,7 @@ public class MessagesController extends BaseController implements NotificationCe
         getMessagesStorage().cleanup(false);
         cleanup();
         GlobalMusicController globalMusicController = GlobalMusicControllerImpl.getInstance();
-        globalMusicController.removeAccIdsMappingByLocalId(currentAccount);
+        globalMusicController.removeAccountIdMappingByLocalId(currentAccount);
         getContactsController().deleteUnknownAppAccounts();
     }
 

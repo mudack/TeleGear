@@ -23,7 +23,7 @@ public interface GlobalMusicDatabaseRepo {
     void removeRecentPlaylist(int playlistId) throws SQLiteException;
     void clearRecentPlaylists() throws SQLiteException;
 
-    void addNewUserIdsMapping(int localUserId, long mtprotoUserId) throws SQLiteException;
-    int getLocalUserIdByMtprotoId(long mtprotoId) throws SQLiteException;
-    void removeUserIdsMappingByLocalId(int localId) throws SQLiteException;
+    void addAccountIdMapping(int localAccountId, long mtprotoAccountId) throws SQLiteException;
+    int getLocalAccountIdByMtprotoAccountId(long mtprotoAccountId) throws SQLiteException;
+    void removeAccountIdMappingByLocalId(int localAccountId) throws SQLiteException;
 }

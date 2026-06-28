@@ -212,7 +212,7 @@ public class TracksDao {
         return result;
     }
 
-    public void addNewEntry(int localUserId, long mtprotoUserId) throws SQLiteException {
+    public void addAccountIdMapping(int localAccountId, long mtprotoAccountId) throws SQLiteException {
         SQLitePreparedStatement state = database.executeFast(
                 "INSERT OR REPLACE INTO " + DB_ACC_IDS_MAPPING_TABLE_NAME + " (" +
                         DB_ACC_IDS_MAPPING_COLUMN_NAME_LOCAL_ID + ", " +
@@ -221,39 +221,39 @@ public class TracksDao {
         );
 
         state.requery();
-        state.bindInteger(1, localUserId);
-        state.bindLong(2, mtprotoUserId);
+        state.bindInteger(1, localAccountId);
+        state.bindLong(2, mtprotoAccountId);
         state.step();
         state.dispose();
     }
 
-    public int getLocalUserId(long mtprotoUserId) throws SQLiteException {
+    public int getLocalAccountIdByMtprotoAccountId(long mtprotoAccountId) throws SQLiteException {
         SQLiteCursor cursor = database.queryFinalized(
                 "SELECT " + DB_ACC_IDS_MAPPING_COLUMN_NAME_LOCAL_ID + " FROM " + DB_ACC_IDS_MAPPING_TABLE_NAME +
                         " WHERE " + DB_ACC_IDS_MAPPING_COLUMN_NAME_MTPROTO_ID + " = ?",
-                mtprotoUserId
+                mtprotoAccountId
         );
 
-        int localAccId = UtilDao.INT_NULL_OBJECT;
+        int localAccountId = UtilDao.INT_NULL_OBJECT;
         while (cursor.next()) {
         /* documentation
             0 - DB_ACC_IDS_MAPPING_COLUMN_NAME_LOCAL_ID
          */
-            localAccId = UtilDao.getIntOrNullObject(cursor, 0);
+            localAccountId = UtilDao.getIntOrNullObject(cursor, 0);
         }
         cursor.dispose();
 
-        return localAccId;
+        return localAccountId;
     }
 
-    public void removeMappingEntryByLocalId(int localUserId) throws SQLiteException {
+    public void removeAccountIdMappingByLocalId(int localAccountId) throws SQLiteException {
         SQLitePreparedStatement state = database.executeFast(
                 "DELETE FROM " + DB_ACC_IDS_MAPPING_TABLE_NAME +
                         " WHERE " + DB_ACC_IDS_MAPPING_COLUMN_NAME_LOCAL_ID + " =? "
         );
 
         state.requery();
-        state.bindInteger(1, localUserId);
+        state.bindInteger(1, localAccountId);
         state.step();
         state.dispose();
     }

@@ -254,10 +254,10 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     }
 
     @Override
-    public void addNewAccIdsMapping(int localUserId, long mtprotoUserId) {
+    public void addAccountIdMapping(int localAccountId, long mtprotoAccountId) {
         storageQueue.postRunnable(() -> {
             try {
-                databaseRepo.addNewUserIdsMapping(localUserId, mtprotoUserId);
+                databaseRepo.addAccountIdMapping(localAccountId, mtprotoAccountId);
 //                AndroidUtilities.runOnUIThread(() -> {
 //                    NotificationCenter.getGlobalInstance().postNotificationName(
 //                    );
@@ -268,7 +268,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
                 AndroidUtilities.runOnUIThread(() -> {
                     NotificationCenter.getGlobalInstance().postNotificationName(
                             NotificationCenter.musicDatabaseError,
-                            "Can't do addNewAccIdsMapping with: localUserId = " + localUserId + ", mtprotoUserId = "+ mtprotoUserId +" due " + e.getMessage()
+                            "Can't do addAccountIdMapping with: localAccountId = " + localAccountId + ", mtprotoAccountId = "+ mtprotoAccountId +" due " + e.getMessage()
                     );
                 });
             }
@@ -276,14 +276,14 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     }
 
     @Override
-    public void getLocalUserIdByMtprotoId(long mtprotoId) {
+    public void getLocalAccountIdByMtprotoAccountId(long mtprotoAccountId) {
         storageQueue.postRunnable(() -> {
             try {
-                int localUserId = databaseRepo.getLocalUserIdByMtprotoId(mtprotoId);
+                int localAccountId = databaseRepo.getLocalAccountIdByMtprotoAccountId(mtprotoAccountId);
                 AndroidUtilities.runOnUIThread(() -> {
                     NotificationCenter.getGlobalInstance().postNotificationName(
-                            NotificationCenter.localUserIdFromMappingTable,
-                            localUserId
+                            NotificationCenter.localAccountIdFromMappingTable,
+                            localAccountId
                     );
                 });
             } catch (SQLiteException e) {
@@ -292,7 +292,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
                 AndroidUtilities.runOnUIThread(() -> {
                     NotificationCenter.getGlobalInstance().postNotificationName(
                             NotificationCenter.musicDatabaseError,
-                            "Can't do getLocalUserIdByMtprotoId with: mtprotoUserId = "+ mtprotoId +" due " + e.getMessage()
+                            "Can't do getLocalAccountIdByMtprotoAccountId with: mtprotoAccountId = "+ mtprotoAccountId +" due " + e.getMessage()
                     );
                 });
             }
@@ -300,17 +300,17 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     }
 
     @Override
-    public void removeAccIdsMappingByLocalId(int localId) {
+    public void removeAccountIdMappingByLocalId(int localAccountId) {
         storageQueue.postRunnable(() -> {
             try {
-                databaseRepo.removeUserIdsMappingByLocalId(localId);
+                databaseRepo.removeAccountIdMappingByLocalId(localAccountId);
             } catch (SQLiteException e) {
                 FileLog.e(e);
                 e.printStackTrace();
                 AndroidUtilities.runOnUIThread(() -> {
                     NotificationCenter.getGlobalInstance().postNotificationName(
                             NotificationCenter.musicDatabaseError,
-                            "Can't do removeAccIdsMappingByLocalId with: localId = "+ localId +" due " + e.getMessage()
+                            "Can't do removeAccountIdMappingByLocalId with: localAccountId = "+ localAccountId +" due " + e.getMessage()
                     );
                 });
             }

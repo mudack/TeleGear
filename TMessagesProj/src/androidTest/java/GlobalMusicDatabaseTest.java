@@ -84,7 +84,7 @@ public class GlobalMusicDatabaseTest {
     public void testAddMusicToPlaylist() throws Exception {
         Playlist playlist = db.createPlaylist("MyPlaylist");
 
-        db.addNewUserIdsMapping(1, TEST_GLOBAL_ACC_ID_1);
+        db.addAccountIdMapping(1, TEST_GLOBAL_ACC_ID_1);
         MusicData music = createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 12L, 34);
 
         db.addMusicToPlaylist(playlist.getId(), music);
@@ -275,29 +275,29 @@ public class GlobalMusicDatabaseTest {
 
     @Test
     public void testLocalAndMtprotoUserIdsInMappingTable() throws SQLiteException {
-        db.addNewUserIdsMapping(1, 1000);
-        db.addNewUserIdsMapping(2, 2000);
-        db.addNewUserIdsMapping(3, 3000);
+        db.addAccountIdMapping(1, 1000);
+        db.addAccountIdMapping(2, 2000);
+        db.addAccountIdMapping(3, 3000);
 
-        assertEquals(1, db.getLocalUserIdByMtprotoId(1000));
-        assertEquals(2, db.getLocalUserIdByMtprotoId(2000));
-        assertEquals(3, db.getLocalUserIdByMtprotoId(3000));
+        assertEquals(1, db.getLocalAccountIdByMtprotoAccountId(1000));
+        assertEquals(2, db.getLocalAccountIdByMtprotoAccountId(2000));
+        assertEquals(3, db.getLocalAccountIdByMtprotoAccountId(3000));
     }
 
     @Test
     public void testLocalAndMtprotoUserIdsInMappingTable_case_userLogoutAndLoginInAnotherAcc() throws SQLiteException {
-        db.addNewUserIdsMapping(1, 1000);
-        db.addNewUserIdsMapping(2, 2000);
-        db.addNewUserIdsMapping(3, 3000);
+        db.addAccountIdMapping(1, 1000);
+        db.addAccountIdMapping(2, 2000);
+        db.addAccountIdMapping(3, 3000);
 
-        db.removeUserIdsMappingByLocalId(2);
+        db.removeAccountIdMappingByLocalId(2);
 
-        assertEquals(1, db.getLocalUserIdByMtprotoId(1000));
-        assertEquals(3, db.getLocalUserIdByMtprotoId(3000));
+        assertEquals(1, db.getLocalAccountIdByMtprotoAccountId(1000));
+        assertEquals(3, db.getLocalAccountIdByMtprotoAccountId(3000));
 
-        db.addNewUserIdsMapping(2, 2222);
+        db.addAccountIdMapping(2, 2222);
 
-        assertEquals(2, db.getLocalUserIdByMtprotoId(2222));
+        assertEquals(2, db.getLocalAccountIdByMtprotoAccountId(2222));
     }
 
     private final long TEST_GLOBAL_ACC_ID_1 = 516289273;
