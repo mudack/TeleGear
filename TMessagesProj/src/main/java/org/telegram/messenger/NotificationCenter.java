@@ -379,11 +379,12 @@ public class NotificationCenter {
     public static final int contactsPermissionBadgeCheck = totalEvents++;
 
     //Extended player constants
-    public static final int musicPlaylistCreated = totalEvents++; //send new playlist name
-    public static final int musicLoadListOfPlaylist = totalEvents++; //send ArrayList<Playlist>
+    public static final int musicPlaylistCreated = totalEvents++; //sends new playlist name
+    public static final int musicLoadListOfPlaylist = totalEvents++; //sends ArrayList<Playlist>
     public static final int musicReceiveMusicFromPlaylist = totalEvents++; //send ArrayList<MusicData>
-    public static final int musicAddedToPlaylist = totalEvents++; // send playlistName and musicName
-    public static final int musicDatabaseError = totalEvents++; //send messageError
+    public static final int musicAddedToPlaylist = totalEvents++; // sends playlistName and musicName
+    public static final int musicDatabaseError = totalEvents++; //sends messageError
+    public static final int localUserIdFromMappingTable = totalEvents++; //sends int (local id from db by mtprotoId)
 
     public static boolean alreadyLogged;
 

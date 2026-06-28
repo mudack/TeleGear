@@ -56,6 +56,8 @@ import org.telegram.SQLite.SQLiteDatabase;
 import org.telegram.SQLite.SQLiteException;
 import org.telegram.SQLite.SQLitePreparedStatement;
 import org.telegram.messenger.browser.Browser;
+import org.telegram.messenger.extended_music_player.GlobalMusicController;
+import org.telegram.messenger.extended_music_player.GlobalMusicControllerImpl;
 import org.telegram.messenger.support.LongSparseIntArray;
 import org.telegram.messenger.support.LongSparseLongArray;
 import org.telegram.messenger.voip.GroupCallMessagesController;
@@ -71,11 +73,11 @@ import org.telegram.tgnet.TLRPC;
 import org.telegram.tgnet.Vector;
 import org.telegram.tgnet.tl.TL_account;
 import org.telegram.tgnet.tl.TL_bots;
+import org.telegram.tgnet.tl.TL_chatlists;
 import org.telegram.tgnet.tl.TL_forum;
 import org.telegram.tgnet.tl.TL_phone;
 import org.telegram.tgnet.tl.TL_stars;
 import org.telegram.tgnet.tl.TL_stories;
-import org.telegram.tgnet.tl.TL_chatlists;
 import org.telegram.ui.ActionBar.ActionBarLayout;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -15359,6 +15361,8 @@ public class MessagesController extends BaseController implements NotificationCe
         getNotificationCenter().postNotificationName(NotificationCenter.appDidLogout);
         getMessagesStorage().cleanup(false);
         cleanup();
+        GlobalMusicController globalMusicController = GlobalMusicControllerImpl.getInstance();
+        globalMusicController.removeAccIdsMappingByLocalId(currentAccount);
         getContactsController().deleteUnknownAppAccounts();
     }
 

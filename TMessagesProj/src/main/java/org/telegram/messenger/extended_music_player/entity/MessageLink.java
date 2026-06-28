@@ -98,4 +98,5 @@ public class MessageLink {
                 ", messageId=" + messageId +
                 '}';
     }
+
 }

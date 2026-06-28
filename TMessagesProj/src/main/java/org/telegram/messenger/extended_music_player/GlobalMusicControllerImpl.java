@@ -1,12 +1,12 @@
 package org.telegram.messenger.extended_music_player;
 
-import static org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseImpl.GLOBAL_MUSIC_DB_FILE_NAME;
+import static org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepoImpl.GLOBAL_MUSIC_DB_FILE_NAME;
 
 import androidx.annotation.UiThread;
 
 import org.telegram.SQLite.SQLiteException;
-import org.telegram.SQLite.extended_music_player.GlobalMusicDatabase;
-import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseImpl;
+import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepo;
+import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepoImpl;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.DispatchQueue;
@@ -28,7 +28,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
 
     private static volatile GlobalMusicControllerImpl Instance;
     private final DispatchQueue storageQueue = new DispatchQueue(DISPATCH_STORAGE_QUEUE_NAME);
-    private GlobalMusicDatabase database;
+    private GlobalMusicDatabaseRepo databaseRepo;
 
     private final Deque<Playlist> recentPlaylists = new ArrayDeque<>(MAX_AMOUNT_OF_RECENT_PLAYLIST);
     private volatile RecentPlaylistState recentPlaylistsState = RecentPlaylistState.LOADING;
@@ -52,9 +52,9 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
             try {
                 File filesDir = ApplicationLoader.getFilesDirFixed();
                 File dbFile = new File(filesDir, GLOBAL_MUSIC_DB_FILE_NAME);
-                database = new GlobalMusicDatabaseImpl(dbFile);
+                databaseRepo = new GlobalMusicDatabaseRepoImpl(dbFile);
 
-                ArrayList<Playlist> savedRecentPlaylist = database.getRecentPlaylists(MAX_AMOUNT_OF_RECENT_PLAYLIST);
+                ArrayList<Playlist> savedRecentPlaylist = databaseRepo.getRecentPlaylists(MAX_AMOUNT_OF_RECENT_PLAYLIST);
 
                 AndroidUtilities.runOnUIThread(() -> {
                     recentPlaylists.clear();
@@ -97,7 +97,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     public void createPlaylist(String name) {
         storageQueue.postRunnable(() -> {
             try {
-                Playlist insertedPlaylist = database.createPlaylist(name);
+                Playlist insertedPlaylist = databaseRepo.createPlaylist(name);
 
                 AndroidUtilities.runOnUIThread(() -> {
 //                    if (recentPlaylists.size() < MAX_AMOUNT_OF_RECENT_PLAYLIST) {
@@ -125,7 +125,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     public void getAllPlaylists() {
         storageQueue.postRunnable(() -> {
             try {
-                ArrayList<Playlist> playlists = database.getAllPlaylists();
+                ArrayList<Playlist> playlists = databaseRepo.getAllPlaylists();
                 AndroidUtilities.runOnUIThread(() -> {
                     NotificationCenter.getGlobalInstance().postNotificationName(
                             NotificationCenter.musicLoadListOfPlaylist,
@@ -148,7 +148,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     private void getPlaylistById(int playlistId, ResultCallback<Playlist> resultCallback) {
         storageQueue.postRunnable(() -> {
             try {
-                Playlist playlist = database.getPlaylistById(playlistId);
+                Playlist playlist = databaseRepo.getPlaylistById(playlistId);
                 AndroidUtilities.runOnUIThread(() -> {
                     resultCallback.onResult(playlist);
                 });
@@ -170,7 +170,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     public void addMusicToPlaylist(Playlist playlist, MusicData music) {
         storageQueue.postRunnable(() -> {
             try {
-                database.addMusicToPlaylist(playlist.getId(), music);
+                databaseRepo.addMusicToPlaylist(playlist.getId(), music);
                 AndroidUtilities.runOnUIThread(() -> {
                     NotificationCenter.getGlobalInstance().postNotificationName(
                             NotificationCenter.musicAddedToPlaylist,
@@ -197,7 +197,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     public void getMusicsByPlaylistId(int playlistId) {
         storageQueue.postRunnable(() -> {
             try {
-                ArrayList<MessageLink> musicLinksInPlaylist = database.getMusicLinksByPlaylistId(playlistId);
+                ArrayList<MessageLink> musicLinksInPlaylist = databaseRepo.getMusicLinksByPlaylistId(playlistId);
                 ArrayList<MusicData> musics = musicLinksInPlaylist.stream().map(MusicData::new).collect(Collectors.toCollection(ArrayList::new));
                 AndroidUtilities.runOnUIThread(() -> {
                     NotificationCenter.getGlobalInstance().postNotificationName(
@@ -233,7 +233,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
             long timestamp = System.currentTimeMillis();
             storageQueue.postRunnable(() -> {
                 try {
-                    database.markPlaylistAsRecent(playlistId, timestamp);
+                    databaseRepo.markPlaylistAsRecent(playlistId, timestamp);
                 } catch (SQLiteException e) {
                     FileLog.e(e);
                     e.printStackTrace();
@@ -251,6 +251,70 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     @UiThread
     private ArrayList<Playlist> getRecentPlaylist() {
         return new ArrayList<Playlist>(recentPlaylists); //GC can be optimized
+    }
+
+    @Override
+    public void addNewAccIdsMapping(int localUserId, long mtprotoUserId) {
+        storageQueue.postRunnable(() -> {
+            try {
+                databaseRepo.addNewUserIdsMapping(localUserId, mtprotoUserId);
+//                AndroidUtilities.runOnUIThread(() -> {
+//                    NotificationCenter.getGlobalInstance().postNotificationName(
+//                    );
+//                });
+            } catch (SQLiteException e) {
+                FileLog.e(e);
+                e.printStackTrace();
+                AndroidUtilities.runOnUIThread(() -> {
+                    NotificationCenter.getGlobalInstance().postNotificationName(
+                            NotificationCenter.musicDatabaseError,
+                            "Can't do addNewAccIdsMapping with: localUserId = " + localUserId + ", mtprotoUserId = "+ mtprotoUserId +" due " + e.getMessage()
+                    );
+                });
+            }
+        });
+    }
+
+    @Override
+    public void getLocalUserIdByMtprotoId(long mtprotoId) {
+        storageQueue.postRunnable(() -> {
+            try {
+                int localUserId = databaseRepo.getLocalUserIdByMtprotoId(mtprotoId);
+                AndroidUtilities.runOnUIThread(() -> {
+                    NotificationCenter.getGlobalInstance().postNotificationName(
+                            NotificationCenter.localUserIdFromMappingTable,
+                            localUserId
+                    );
+                });
+            } catch (SQLiteException e) {
+                FileLog.e(e);
+                e.printStackTrace();
+                AndroidUtilities.runOnUIThread(() -> {
+                    NotificationCenter.getGlobalInstance().postNotificationName(
+                            NotificationCenter.musicDatabaseError,
+                            "Can't do getLocalUserIdByMtprotoId with: mtprotoUserId = "+ mtprotoId +" due " + e.getMessage()
+                    );
+                });
+            }
+        });
+    }
+
+    @Override
+    public void removeAccIdsMappingByLocalId(int localId) {
+        storageQueue.postRunnable(() -> {
+            try {
+                databaseRepo.removeUserIdsMappingByLocalId(localId);
+            } catch (SQLiteException e) {
+                FileLog.e(e);
+                e.printStackTrace();
+                AndroidUtilities.runOnUIThread(() -> {
+                    NotificationCenter.getGlobalInstance().postNotificationName(
+                            NotificationCenter.musicDatabaseError,
+                            "Can't do removeAccIdsMappingByLocalId with: localId = "+ localId +" due " + e.getMessage()
+                    );
+                });
+            }
+        });
     }
 
     private static final String DISPATCH_STORAGE_QUEUE_NAME = "global_music_queue";

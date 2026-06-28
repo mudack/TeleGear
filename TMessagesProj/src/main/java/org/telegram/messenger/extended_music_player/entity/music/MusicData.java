@@ -9,8 +9,8 @@ import java.util.Objects;
 
 public class MusicData {
 
-    private final MessageLink messageLink;
-    private final MusicMetaData musicMetaData;
+    @NonNull private final MessageLink messageLink;
+    @NonNull private final MusicMetaData musicMetaData;
 
     public MusicData(@NonNull MusicMessageObjectAdapterInterface messageSource) {
         this(messageSource, new MessageLink(messageSource));
