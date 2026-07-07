@@ -504,6 +504,7 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
 
 
     public enum TabAnimation {
+        PLAYLIST(R.raw.tab_playlist),
         CONTACTS(R.raw.tab_contacts),
         CALLS(R.raw.tab_calls),
         CHATS(R.raw.tab_chats),
