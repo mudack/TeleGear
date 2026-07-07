@@ -95,6 +95,29 @@ public class GlobalMusicDatabaseRepoImpl implements GlobalMusicDatabaseRepo {
     }
 
     @Override
+    public Playlist renamePlaylist(int id, String name) throws SQLiteException {
+        return playlistDao.renamePlaylist(id, name);
+    }
+
+    @Override
+    public void deletePlaylist(int id) throws SQLiteException {
+        playlistDao.requirePlaylistExists(id);
+        database.beginTransaction();
+        playlistTrackDao.removeMusicLinksByPlaylistId(id);
+        recentPlaylistDao.removeRecentPlaylist(id);
+        playlistDao.deletePlaylist(id);
+        database.commitTransaction();
+    }
+
+    @Override
+    public void updatePlaylistOrder(ArrayList<Integer> playlistIds) throws SQLiteException {
+        playlistDao.validatePlaylistOrder(playlistIds);
+        database.beginTransaction();
+        playlistDao.updatePlaylistOrder(playlistIds);
+        database.commitTransaction();
+    }
+
+    @Override
     public Integer addMusicToLibrary(MusicData music) throws SQLiteException {
         return tracksDao.addMusicToLibrary(music);
     }

@@ -17,6 +17,7 @@ import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -29,6 +30,7 @@ import androidx.annotation.NonNull;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -63,6 +65,7 @@ import java.util.Locale;
 public class PlaylistActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate, MainTabsActivity.TabFragmentDelegate {
 
     private static final boolean ARGS_NAME_HAS_MAIN_TABS_DEFAULT_VALUE = false;
+    public static final int MAX_LENGTH_OF_PLAYLIST_NAME = 100;
 
     public PlaylistActivity() {
         super();
@@ -82,6 +85,7 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
     private HeaderShadowView headerShadowView;
     private FragmentContextView fragmentContextView;
     private FrameLayout fragmentContextViewWrapper;
+    private ItemTouchHelper itemTouchHelper;
 
     private final ArrayList<Playlist> playlists = new ArrayList<>();
     private final ArrayList<Playlist> filteredPlaylists = new ArrayList<>();
@@ -92,6 +96,7 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
     private int navigationBarHeight;
     private int additionNavigationBarHeight;
     private int additionFloatingButtonOffset;
+    private boolean playlistOrderChanged;
 
     private GlobalMusicControllerImpl globalMusicController;
 
@@ -191,6 +196,15 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
             }
             presentFragment(new DetailedPlaylistActivity(DetailedPlaylistActivity.createArgs(playlist)));
         });
+        listView.setOnItemLongClickListener((view, position) -> {
+            Playlist playlist = getPlaylistAt(position);
+            if (playlist == null) {
+                return false;
+            }
+            showPlaylistOptionsDialog(playlist);
+            return true;
+        });
+        setupPlaylistReorderHelper();
         scrollHelper = new RecyclerAnimationScrollHelper(listView, layoutManager);
         contentView.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
@@ -403,14 +417,135 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
         return filteredPlaylists.get(position);
     }
 
+    private void setupPlaylistReorderHelper() {
+        itemTouchHelper = new ItemTouchHelper(new ItemTouchHelper.Callback() {
+            @Override
+            public boolean isLongPressDragEnabled() {
+                return false;
+            }
+
+            @Override
+            public int getMovementFlags(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+                if (!canReorderPlaylists()) {
+                    return 0;
+                }
+                return makeMovementFlags(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0);
+            }
+
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                if (!canReorderPlaylists()) {
+                    return false;
+                }
+                int fromPosition = viewHolder.getAdapterPosition();
+                int toPosition = target.getAdapterPosition();
+                if (fromPosition == RecyclerView.NO_POSITION || toPosition == RecyclerView.NO_POSITION ||
+                        fromPosition < 0 || toPosition < 0 ||
+                        fromPosition >= playlists.size() || toPosition >= playlists.size()) {
+                    return false;
+                }
+                movePlaylist(fromPosition, toPosition);
+                playlistOrderChanged = true;
+                listAdapter.notifyItemMoved(fromPosition, toPosition);
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+
+            }
+
+            @Override
+            public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
+                if (viewHolder != null) {
+                    listView.hideSelector(false);
+                }
+                if (actionState != ItemTouchHelper.ACTION_STATE_IDLE) {
+                    listView.cancelClickRunnables(false);
+                    if (viewHolder != null) {
+                        viewHolder.itemView.setPressed(true);
+                    }
+                }
+                super.onSelectedChanged(viewHolder, actionState);
+            }
+
+            @Override
+            public void clearView(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+                super.clearView(recyclerView, viewHolder);
+                viewHolder.itemView.setPressed(false);
+                if (playlistOrderChanged) {
+                    playlistOrderChanged = false;
+                    savePlaylistOrder();
+                }
+            }
+        });
+        itemTouchHelper.attachToRecyclerView(listView);
+    }
+
+    private boolean canReorderPlaylists() {
+        String normalizedQuery = query == null ? "" : query.trim();
+        return TextUtils.isEmpty(normalizedQuery) && playlists.size() > 1;
+    }
+
+    private void movePlaylist(int fromPosition, int toPosition) {
+        if (fromPosition == toPosition) {
+            return;
+        }
+        Playlist playlist = playlists.remove(fromPosition);
+        playlists.add(toPosition, playlist);
+
+        filteredPlaylists.clear();
+        filteredPlaylists.addAll(playlists);
+    }
+
+    private void savePlaylistOrder() {
+        if (globalMusicController == null) {
+            return;
+        }
+        ArrayList<Integer> playlistIds = new ArrayList<>();
+        for (int i = 0; i < playlists.size(); i++) {
+            playlistIds.add(playlists.get(i).getId());
+        }
+        globalMusicController.updatePlaylistOrder(playlistIds);
+    }
+
     private void showCreateNewPlaylistDialog() {
+        showPlaylistTitleDialog(
+                getString(R.string.playlist_new_playlist),
+                getString(R.string.playlist_new_playlist_dialog_create_btn_text),
+                null,
+                playlistName -> globalMusicController.createPlaylist(playlistName)
+        );
+    }
+
+    private void showRenamePlaylistDialog(Playlist playlist) {
+        if (playlist == null) {
+            return;
+        }
+        String oldPlaylistName = playlist.getName() == null ? "" : playlist.getName();
+        showPlaylistTitleDialog(
+                getString(R.string.playlist_rename_playlist),
+                getString(R.string.Rename),
+                oldPlaylistName,
+                playlistName -> {
+                    if (playlistName.equals(oldPlaylistName.trim())) {
+                        return;
+                    }
+                    globalMusicController.renamePlaylist(playlist.getId(), playlistName);
+                }
+        );
+    }
+
+    private void showPlaylistTitleDialog(String title, String positiveButton, String initialPlaylistName, PlaylistTitleCallback positiveCallback) {
         Context context = getContext();
         if (context == null) {
             return;
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(context, resourceProvider);
-        int maxLengthOfPlaylistName = 100;
-        EditTextCell editText = new EditTextCell(context, getString(R.string.playlist_new_playlist_dialog_et_hint), false, false, maxLengthOfPlaylistName, resourceProvider);
+        EditTextCell editText = new EditTextCell(context, getString(R.string.playlist_new_playlist_dialog_et_hint), false, false, MAX_LENGTH_OF_PLAYLIST_NAME, resourceProvider);
+        if (!TextUtils.isEmpty(initialPlaylistName)) {
+            editText.setText(initialPlaylistName);
+        }
         editText.setShowLimitWhenEmpty(true);
         editText.setDivider(true);
 
@@ -418,26 +553,74 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
         container.setPadding(LocaleController.isRTL ? dp(24) : 0, dp(24), LocaleController.isRTL ? 0 : dp(24), 0);
         container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.FILL_HORIZONTAL | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT)));
 
-        builder.setTitle(getString(R.string.playlist_new_playlist));
+        builder.setTitle(title);
         builder.setView(container);
-        builder.setPositiveButton(getString(R.string.playlist_new_playlist_dialog_create_btn_text), null);
+        builder.setPositiveButton(positiveButton, null);
 
         AlertDialog dialog = builder.create();
         dialog.setOnShowListener(d -> {
             View button = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
             button.setOnClickListener(v -> {
-                String newPlaylistName = editText.getText().toString().trim();
-                if (newPlaylistName.isEmpty()) {
+                String playlistName = editText.getText().toString().trim();
+                if (playlistName.isEmpty()) {
                     Toast.makeText(context, getString(R.string.playlist_error_message_empty_playlist_name), Toast.LENGTH_SHORT).show();
                     return;
                 }
-                globalMusicController.createPlaylist(newPlaylistName);
+                if (positiveCallback != null) {
+                    positiveCallback.run(playlistName);
+                }
                 dialog.dismiss();
             });
             editText.requestFocus();
+            if (!TextUtils.isEmpty(initialPlaylistName)) {
+                editText.editText.setSelection(0, editText.editText.length());
+            }
             AndroidUtilities.showKeyboard(editText);
         });
         showDialog(dialog);
+    }
+
+    private void showPlaylistOptionsDialog(Playlist playlist) {
+        Context context = getContext();
+        if (context == null || playlist == null) {
+            return;
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(context, resourceProvider);
+        builder.setTitle(playlist.getName());
+        builder.setItems(new CharSequence[]{
+                getString(R.string.Rename),
+                getString(R.string.Delete)
+        }, (dialog, which) -> {
+            if (which == 0) {
+                showRenamePlaylistDialog(playlist);
+            } else if (which == 1) {
+                showDeletePlaylistDialog(playlist);
+            }
+        });
+        showDialog(builder.create());
+    }
+
+    private void showDeletePlaylistDialog(Playlist playlist) {
+        Context context = getContext();
+        if (context == null || playlist == null) {
+            return;
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(context, resourceProvider);
+        builder.setTitle(getString(R.string.playlist_delete_playlist));
+        builder.setMessage(LocaleController.formatString(R.string.playlist_delete_playlist_confirm, playlist.getName()));
+        builder.setPositiveButton(getString(R.string.Delete), (dialog, which) -> {
+            if (globalMusicController != null) {
+                globalMusicController.deletePlaylist(playlist.getId());
+            }
+        });
+        builder.setNegativeButton(getString(R.string.Cancel), null);
+        AlertDialog dialog = builder.create();
+        showDialog(dialog);
+        dialog.redPositive();
+    }
+
+    private interface PlaylistTitleCallback {
+        void run(String playlistName);
     }
 
     @Override
@@ -513,7 +696,15 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
             Playlist playlist = getPlaylistAt(position);
             if (playlist != null) {
-                ((PlaylistCell) holder.itemView).setPlaylist(playlist, position != getItemCount() - 1);
+                PlaylistCell cell = (PlaylistCell) holder.itemView;
+                boolean showReorderHandle = canReorderPlaylists();
+                View.OnTouchListener onReorderTouch = (v, event) -> {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN && itemTouchHelper != null && showReorderHandle) {
+                        itemTouchHelper.startDrag(listView.getChildViewHolder(cell));
+                    }
+                    return false;
+                };
+                cell.setPlaylist(playlist, position != getItemCount() - 1, showReorderHandle, onReorderTouch);
             }
         }
     }
@@ -555,18 +746,17 @@ public class PlaylistActivity extends BaseFragment implements NotificationCenter
 
             moreView = new ImageView(context);
             moreView.setScaleType(ImageView.ScaleType.CENTER);
-            moreView.setImageResource(R.drawable.mini_more_dots);
-            moreView.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
-            moreView.setOnClickListener(v -> {
-                // todo Playlist options will be implemented later.
-            });
+            moreView.setImageResource(R.drawable.list_reorder);
+            moreView.setContentDescription(LocaleController.getString(R.string.playlist_screen_item_reorder_playlist));
             addView(moreView, LayoutHelper.createFrame(48, 48, (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL, 6, 0, 6, 0));
 
             updateColors();
         }
 
-        private void setPlaylist(Playlist playlist, boolean divider) {
+        private void setPlaylist(Playlist playlist, boolean divider, boolean showReorderHandle, View.OnTouchListener onReorderTouchListener) {
             nameTextView.setText(playlist.getName());
+            moreView.setVisibility(showReorderHandle ? View.VISIBLE : View.GONE);
+            moreView.setOnTouchListener(showReorderHandle ? onReorderTouchListener : null);
             needDivider = divider;
             invalidate();
         }

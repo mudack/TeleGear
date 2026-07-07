@@ -33,6 +33,18 @@ public class PlaylistTrackDao {
         state.dispose();
     }
 
+    public void removeMusicLinksByPlaylistId(int playlistId) throws SQLiteException {
+        SQLitePreparedStatement state = database.executeFast(
+                "DELETE FROM " + DB_PT_TABLE_NAME +
+                        " WHERE " + DB_PT_COLUMN_NAME_PLAYLIST_UID + " = ?"
+        );
+
+        state.requery();
+        state.bindInteger(1, playlistId);
+        state.step();
+        state.dispose();
+    }
+
     //PLAYLIST_TRACKS TABLE
     static final String DB_PT_TABLE_NAME = "playlist_tracks"; //PT is short playlist_tracks
     static final String DB_PT_COLUMN_NAME_PLAYLIST_UID = "playlist_uid";

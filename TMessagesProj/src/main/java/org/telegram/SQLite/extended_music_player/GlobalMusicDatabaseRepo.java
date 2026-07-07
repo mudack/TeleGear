@@ -11,6 +11,9 @@ public interface GlobalMusicDatabaseRepo {
     Playlist createPlaylist(String name) throws SQLiteException;
     ArrayList<Playlist> getAllPlaylists() throws SQLiteException;
     Playlist getPlaylistById(int id) throws SQLiteException;
+    Playlist renamePlaylist(int id, String name) throws SQLiteException;
+    void deletePlaylist(int id) throws SQLiteException;
+    void updatePlaylistOrder(ArrayList<Integer> playlistIds) throws SQLiteException;
     Integer addMusicToLibrary(MusicData music) throws SQLiteException;
     MusicData getMusicFromLibraryById(int id) throws SQLiteException;
     ArrayList<MusicData> getAllMusicFromLibrary() throws SQLiteException;

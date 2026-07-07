@@ -11,6 +11,7 @@ package org.telegram.ui.Components;
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.formatString;
 import static org.telegram.messenger.LocaleController.getString;
+import static org.telegram.ui.extended_music_screens.playlists.PlaylistActivity.MAX_LENGTH_OF_PLAYLIST_NAME;
 
 import android.Manifest;
 import android.animation.Animator;
@@ -2942,8 +2943,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
     private void showCreateNewPlayListDialog(Context context, Consumer<String> onCreatePlaylist) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
 
-        int maxLengthOfPlaylistName = 100;
-        EditTextCell editText = new EditTextCell(context, getString(R.string.playlist_new_playlist_dialog_et_hint), false, false, maxLengthOfPlaylistName, resourcesProvider);
+        EditTextCell editText = new EditTextCell(context, getString(R.string.playlist_new_playlist_dialog_et_hint), false, false, MAX_LENGTH_OF_PLAYLIST_NAME, resourcesProvider);
         editText.setShowLimitWhenEmpty(true);
         editText.setDivider(true);
         LinearLayout container = new LinearLayout(context);

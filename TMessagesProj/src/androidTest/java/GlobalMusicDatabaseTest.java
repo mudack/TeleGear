@@ -1,4 +1,5 @@
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.junit.Assert.assertNotNull;
 
 import org.junit.After;
@@ -62,11 +63,16 @@ public class GlobalMusicDatabaseTest {
 
     @Test
     public void testGetAllPlaylist() throws Exception {
-        db.createPlaylist("Jazz");
-        db.createPlaylist("Rock");
-        db.createPlaylist("Metal");
+        Playlist jazz = db.createPlaylist("Jazz");
+        Playlist rock = db.createPlaylist("Rock");
+        Playlist metal = db.createPlaylist("Metal");
 
-        assertEquals(3, db.getAllPlaylists().size());
+        ArrayList<Playlist> result = db.getAllPlaylists();
+
+        assertEquals(3, result.size());
+        assertEquals(jazz.getId(), result.get(0).getId());
+        assertEquals(rock.getId(), result.get(1).getId());
+        assertEquals(metal.getId(), result.get(2).getId());
     }
 
     @Test
@@ -79,6 +85,150 @@ public class GlobalMusicDatabaseTest {
         assertEquals("Jazz", fromDb.getName());
     }
 
+    @Test
+    public void testRenamePlaylist() throws Exception {
+        Playlist playlist = db.createPlaylist("Old name");
+
+        Playlist renamed = db.renamePlaylist(playlist.getId(), "New name");
+        Playlist fromDb = db.getPlaylistById(playlist.getId());
+
+        assertEquals(playlist.getId(), renamed.getId());
+        assertEquals("New name", renamed.getName());
+        assertNotNull(fromDb);
+        assertEquals("New name", fromDb.getName());
+    }
+
+    @Test
+    public void testRenamePlaylist_sameNameNoOp() throws Exception {
+        Playlist playlist = db.createPlaylist("Same name");
+
+        Playlist renamed = db.renamePlaylist(playlist.getId(), "Same name");
+
+        assertEquals(playlist.getId(), renamed.getId());
+        assertEquals("Same name", renamed.getName());
+        assertEquals("Same name", db.getPlaylistById(playlist.getId()).getName());
+    }
+
+    @Test
+    public void testRenamePlaylist_exceptionDuplicateName() throws Exception {
+        Playlist playlist = db.createPlaylist("First");
+        db.createPlaylist("Second");
+
+        try {
+            db.renamePlaylist(playlist.getId(), "Second");
+            fail("Expected SQLiteException");
+        } catch (SQLiteException ignored) {
+
+        }
+
+        assertEquals("First", db.getPlaylistById(playlist.getId()).getName());
+    }
+
+    @Test
+    public void testRenamePlaylist_exceptionEmptyName() throws Exception {
+        Playlist playlist = db.createPlaylist("Playlist");
+
+        try {
+            db.renamePlaylist(playlist.getId(), "  ");
+            fail("Expected SQLiteException");
+        } catch (SQLiteException ignored) {
+
+        }
+
+        assertEquals("Playlist", db.getPlaylistById(playlist.getId()).getName());
+    }
+
+    @Test
+    public void testDeletePlaylist() throws Exception {
+        Playlist playlist = db.createPlaylist("Playlist");
+
+        db.deletePlaylist(playlist.getId());
+
+        assertEquals(0, db.getAllPlaylists().size());
+    }
+
+    @Test
+    public void testDeletePlaylist_removesPlaylistRelations() throws Exception {
+        Playlist playlist = db.createPlaylist("Playlist");
+        db.markPlaylistAsRecent(playlist.getId(), 1000);
+        db.addMusicToPlaylist(playlist.getId(), createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 12L, 34));
+
+        db.deletePlaylist(playlist.getId());
+
+        assertEquals(0, db.getRecentPlaylists(3).size());
+        assertEquals(0, db.getMusicLinksByPlaylistId(playlist.getId()).size());
+    }
+
+    @Test
+    public void testDeletePlaylist_exceptionMissingPlaylist() throws Exception {
+        try {
+            db.deletePlaylist(777);
+            fail("Expected SQLiteException");
+        } catch (SQLiteException ignored) {
+
+        }
+    }
+
+    @Test
+    public void testUpdatePlaylistOrder() throws Exception {
+        Playlist jazz = db.createPlaylist("Jazz");
+        Playlist rock = db.createPlaylist("Rock");
+        Playlist metal = db.createPlaylist("Metal");
+
+        ArrayList<Integer> order = new ArrayList<>();
+        order.add(metal.getId());
+        order.add(jazz.getId());
+        order.add(rock.getId());
+        db.updatePlaylistOrder(order);
+
+        ArrayList<Playlist> result = db.getAllPlaylists();
+
+        assertEquals(metal.getId(), result.get(0).getId());
+        assertEquals(jazz.getId(), result.get(1).getId());
+        assertEquals(rock.getId(), result.get(2).getId());
+    }
+
+    @Test
+    public void testUpdatePlaylistOrder_exceptionDuplicatePlaylistId() throws Exception {
+        Playlist jazz = db.createPlaylist("Jazz");
+        Playlist rock = db.createPlaylist("Rock");
+
+        ArrayList<Integer> order = new ArrayList<>();
+        order.add(jazz.getId());
+        order.add(jazz.getId());
+
+        try {
+            db.updatePlaylistOrder(order);
+            fail("Expected SQLiteException");
+        } catch (SQLiteException ignored) {
+
+        }
+
+        ArrayList<Playlist> result = db.getAllPlaylists();
+        assertEquals(jazz.getId(), result.get(0).getId());
+        assertEquals(rock.getId(), result.get(1).getId());
+    }
+
+    @Test
+    public void testUpdatePlaylistOrder_exceptionMissingPlaylistId() throws Exception {
+        Playlist jazz = db.createPlaylist("Jazz");
+        Playlist rock = db.createPlaylist("Rock");
+
+        ArrayList<Integer> order = new ArrayList<>();
+        order.add(jazz.getId());
+        order.add(777);
+
+        try {
+            db.updatePlaylistOrder(order);
+            fail("Expected SQLiteException");
+        } catch (SQLiteException ignored) {
+
+        }
+
+        ArrayList<Playlist> result = db.getAllPlaylists();
+        assertEquals(jazz.getId(), result.get(0).getId());
+        assertEquals(rock.getId(), result.get(1).getId());
+    }
 
     @Test
     public void testAddMusicToPlaylist() throws Exception {

@@ -20,6 +20,7 @@ import java.io.File;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
@@ -126,12 +127,7 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
         storageQueue.postRunnable(() -> {
             try {
                 ArrayList<Playlist> playlists = databaseRepo.getAllPlaylists();
-                AndroidUtilities.runOnUIThread(() -> {
-                    NotificationCenter.getGlobalInstance().postNotificationName(
-                            NotificationCenter.musicLoadListOfPlaylist,
-                            playlists
-                    );
-                });
+                AndroidUtilities.runOnUIThread(() -> postPlaylistsLoaded(playlists));
             } catch (SQLiteException e) {
                 FileLog.e(e);
                 e.printStackTrace();
@@ -139,6 +135,72 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
                     NotificationCenter.getGlobalInstance().postNotificationName(
                             NotificationCenter.musicDatabaseError,
                             "Can't get all playlists due " + e.getMessage()
+                    );
+                });
+            }
+        });
+    }
+
+    @Override
+    public void renamePlaylist(int playlistId, String name) {
+        storageQueue.postRunnable(() -> {
+            try {
+                Playlist renamedPlaylist = databaseRepo.renamePlaylist(playlistId, name);
+                ArrayList<Playlist> playlists = databaseRepo.getAllPlaylists();
+                AndroidUtilities.runOnUIThread(() -> {
+                    replaceRecentPlaylist(renamedPlaylist);
+                    postPlaylistsLoaded(playlists);
+                });
+            } catch (SQLiteException e) {
+                FileLog.e(e);
+                e.printStackTrace();
+                AndroidUtilities.runOnUIThread(() -> {
+                    NotificationCenter.getGlobalInstance().postNotificationName(
+                            NotificationCenter.musicDatabaseError,
+                            "Can't rename playlist with id: " + playlistId + " due " + e.getMessage()
+                    );
+                });
+            }
+        });
+    }
+
+    @Override
+    public void deletePlaylist(int playlistId) {
+        storageQueue.postRunnable(() -> {
+            try {
+                databaseRepo.deletePlaylist(playlistId);
+                ArrayList<Playlist> playlists = databaseRepo.getAllPlaylists();
+                AndroidUtilities.runOnUIThread(() -> {
+                    removeRecentPlaylistFromMemory(playlistId);
+                    postPlaylistsLoaded(playlists);
+                });
+            } catch (SQLiteException e) {
+                FileLog.e(e);
+                e.printStackTrace();
+                AndroidUtilities.runOnUIThread(() -> {
+                    NotificationCenter.getGlobalInstance().postNotificationName(
+                            NotificationCenter.musicDatabaseError,
+                            "Can't delete playlist with id: " + playlistId + " due " + e.getMessage()
+                    );
+                });
+            }
+        });
+    }
+
+    @Override
+    public void updatePlaylistOrder(ArrayList<Integer> playlistIds) {
+        storageQueue.postRunnable(() -> {
+            try {
+                databaseRepo.updatePlaylistOrder(playlistIds);
+                ArrayList<Playlist> playlists = databaseRepo.getAllPlaylists();
+                AndroidUtilities.runOnUIThread(() -> postPlaylistsLoaded(playlists));
+            } catch (SQLiteException e) {
+                FileLog.e(e);
+                e.printStackTrace();
+                AndroidUtilities.runOnUIThread(() -> {
+                    NotificationCenter.getGlobalInstance().postNotificationName(
+                            NotificationCenter.musicDatabaseError,
+                            "Can't update playlist order due " + e.getMessage()
                     );
                 });
             }
@@ -251,6 +313,47 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     @UiThread
     private ArrayList<Playlist> getRecentPlaylist() {
         return new ArrayList<Playlist>(recentPlaylists); //GC can be optimized
+    }
+
+    @UiThread
+    private void postPlaylistsLoaded(ArrayList<Playlist> playlists) {
+        NotificationCenter.getGlobalInstance().postNotificationName(
+                NotificationCenter.musicLoadListOfPlaylist,
+                playlists
+        );
+    }
+
+    @UiThread
+    private void replaceRecentPlaylist(Playlist playlist) {
+        if (playlist == null) {
+            return;
+        }
+        boolean changed = false;
+        ArrayList<Playlist> updated = new ArrayList<>();
+        for (Playlist recentPlaylist : recentPlaylists) {
+            if (recentPlaylist.getId() == playlist.getId()) {
+                updated.add(playlist);
+                changed = true;
+            } else {
+                updated.add(recentPlaylist);
+            }
+        }
+        if (changed) {
+            recentPlaylists.clear();
+            recentPlaylists.addAll(updated);
+        }
+    }
+
+    @UiThread
+    private void removeRecentPlaylistFromMemory(int playlistId) {
+        Iterator<Playlist> iterator = recentPlaylists.iterator();
+        while (iterator.hasNext()) {
+            Playlist playlist = iterator.next();
+            if (playlist.getId() == playlistId) {
+                iterator.remove();
+                break;
+            }
+        }
     }
 
     @Override
