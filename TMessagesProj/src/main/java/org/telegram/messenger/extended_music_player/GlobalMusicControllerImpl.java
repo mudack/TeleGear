@@ -11,10 +11,11 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.DispatchQueue;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.NotificationCenter;
-import org.telegram.messenger.extended_music_player.entity.MessageLink;
 import org.telegram.messenger.extended_music_player.entity.Playlist;
 import org.telegram.messenger.extended_music_player.entity.music.MusicData;
+import org.telegram.messenger.extended_music_player.entity.music.ResolvedMusicData;
 
 import java.io.File;
 import java.util.ArrayDeque;
@@ -23,7 +24,6 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
 
 public class GlobalMusicControllerImpl implements GlobalMusicController {
 
@@ -259,12 +259,25 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
     public void getMusicsByPlaylistId(int playlistId) {
         storageQueue.postRunnable(() -> {
             try {
-                ArrayList<MessageLink> musicLinksInPlaylist = databaseRepo.getMusicLinksByPlaylistId(playlistId);
-                ArrayList<MusicData> musics = musicLinksInPlaylist.stream().map(MusicData::new).collect(Collectors.toCollection(ArrayList::new));
+                ArrayList<MusicData> musics = databaseRepo.getMusicDataByPlaylistId(playlistId);
+                ArrayList<ResolvedMusicData> resolvedMusics = new ArrayList<>(musics.size());
+                for (MusicData music : musics) {
+                    MessageObject messageObject = null;
+                    try {
+                        MessageObject resolvedMessageObject = music.getMessageLink().getMessageObject();
+                        if (resolvedMessageObject != null && resolvedMessageObject.isMusic()) {
+                            messageObject = resolvedMessageObject;
+                        }
+                    } catch (Exception e) {
+                        FileLog.e(e);
+                    }
+                    resolvedMusics.add(new ResolvedMusicData(music, messageObject));
+                }
                 AndroidUtilities.runOnUIThread(() -> {
                     NotificationCenter.getGlobalInstance().postNotificationName(
                             NotificationCenter.musicReceiveMusicFromPlaylist,
-                            musics
+                            playlistId,
+                            resolvedMusics
                     );
                 });
             } catch (SQLiteException e) {

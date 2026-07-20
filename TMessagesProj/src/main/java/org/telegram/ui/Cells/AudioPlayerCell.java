@@ -163,6 +163,11 @@ public class AudioPlayerCell extends FrameLayout implements DownloadController.F
         boolean needDivider,
         View.OnTouchListener onReorderTouchListener
     ) {
+        if (currentAccount != messageObject.currentAccount) {
+            DownloadController.getInstance(currentAccount).removeLoadingFileObserver(this);
+            currentAccount = messageObject.currentAccount;
+            TAG = DownloadController.getInstance(currentAccount).generateObserverTag();
+        }
         currentMessageObject = messageObject;
         if (this.needDivider != needDivider) {
             invalidate();

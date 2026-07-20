@@ -246,7 +246,7 @@ public class GlobalMusicDatabaseTest {
 
         MessageLink link = result.get(0);
 
-        assertEquals(music.getMessageLink().getGlobalAccountId(), link.getGlobalAccountId());
+        assertEquals(music.getMessageLink().getMtprotoAccountId(), link.getMtprotoAccountId());
         assertEquals(music.getMessageLink().getLocalAccountId(), link.getLocalAccountId());
         assertEquals(music.getMessageLink().getDialogId(), link.getDialogId());
         assertEquals(music.getMessageLink().getMessageId(), link.getMessageId());
@@ -267,7 +267,7 @@ public class GlobalMusicDatabaseTest {
 
         MessageLink link = result.get(0);
 
-        assertEquals(music.getMessageLink().getGlobalAccountId(), link.getGlobalAccountId());
+        assertEquals(music.getMessageLink().getMtprotoAccountId(), link.getMtprotoAccountId());
         assertEquals(UtilDao.INT_NULL_OBJECT, link.getLocalAccountId());
         assertEquals(music.getMessageLink().getDialogId(), link.getDialogId());
         assertEquals(music.getMessageLink().getMessageId(), link.getMessageId());
@@ -302,6 +302,24 @@ public class GlobalMusicDatabaseTest {
         assertEquals(101L, result.get(0).getDialogId());
         assertEquals(102L, result.get(1).getDialogId());
         assertEquals(100L, result.get(2).getDialogId());
+    }
+
+    @Test
+    public void testGetMusicDataByPlaylistId_keepsStoredMetadata() throws Exception {
+        Playlist playlist = db.createPlaylist("MyPlaylist");
+        db.addAccountIdMapping(1, TEST_GLOBAL_ACC_ID_1);
+        db.addMusicToPlaylist(playlist.getId(), createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 100L, 1, "Stored title"));
+
+        ArrayList<MusicData> result = db.getMusicDataByPlaylistId(playlist.getId());
+
+        assertEquals(1, result.size());
+        assertEquals("Stored title", result.get(0).getMusicMetaData().getTitle());
+        assertEquals("the_music_file_name", result.get(0).getMusicMetaData().getFileName());
+        assertEquals("The performer", result.get(0).getMusicMetaData().getPerformer());
+        assertEquals(16.0, result.get(0).getMusicMetaData().getDurationSec(), 0.0);
+        assertEquals(1, result.get(0).getMessageLink().getLocalAccountId());
+        assertEquals(100L, result.get(0).getMessageLink().getDialogId());
+        assertEquals(1, result.get(0).getMessageLink().getMessageId());
     }
 
     @Test

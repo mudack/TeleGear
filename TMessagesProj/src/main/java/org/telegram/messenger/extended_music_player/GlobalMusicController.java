@@ -17,7 +17,8 @@ public interface GlobalMusicController {
     // Add a controller/database API that emits id, name, and track count together instead of
     // duplicating playlist state or calculating per-row counts inside UI code.
     void addMusicToPlaylist(Playlist playlistId, MusicData music);
-    void getMusicsByPlaylistId(int playlistId); //should emit ArrayList<MessageLink>
+    // Emits playlistId and ArrayList<ResolvedMusicData> through musicReceiveMusicFromPlaylist.
+    void getMusicsByPlaylistId(int playlistId);
 
 
     void addAccountIdMapping(int localAccountId, long mtprotoAccountId);

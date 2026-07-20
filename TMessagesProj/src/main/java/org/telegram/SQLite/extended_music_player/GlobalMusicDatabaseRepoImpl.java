@@ -139,6 +139,11 @@ public class GlobalMusicDatabaseRepoImpl implements GlobalMusicDatabaseRepo {
     }
 
     @Override
+    public ArrayList<MusicData> getMusicDataByPlaylistId(int playlistId) throws SQLiteException {
+        return tracksDao.getMusicDataByPlaylistId(playlistId);
+    }
+
+    @Override
     public ArrayList<MessageLink> getMusicLinksByPlaylistId(int playlistId) throws SQLiteException {
         return tracksDao.getMusicLinksByPlaylistId(playlistId);
     }

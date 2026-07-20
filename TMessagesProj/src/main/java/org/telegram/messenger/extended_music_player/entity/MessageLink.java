@@ -10,7 +10,7 @@ import org.telegram.messenger.extended_music_player.entity.music.adapters.messag
 import org.telegram.tgnet.TLRPC;
 
 public class MessageLink {
-    private final long globalAccountId;
+    private final long mtprotoAccountId;
     private final int localAccountId;
     private final long dialogId; //i would prefer to call it as a chatId but whole telegram project call it "dialogId" so i better leave it like that
     private final int messageId;
@@ -20,25 +20,25 @@ public class MessageLink {
         this.localAccountId = msgLink.getLocalAccountId();
         this.dialogId = msgLink.getDialogId();
         this.messageId = msgLink.getMessageId();
-        this.globalAccountId = msgLink.getGlobalAccountId();
+        this.mtprotoAccountId = msgLink.getMtprotoAccountId();
     }
 
     public MessageLink(MessageObject messageObject) {
         this.localAccountId = messageObject.currentAccount;
         this.dialogId = messageObject.getDialogId();
         this.messageId = messageObject.getId();
-        this.globalAccountId = UserConfig.getInstance(localAccountId).getClientUserId();
+        this.mtprotoAccountId = UserConfig.getInstance(localAccountId).getClientUserId();
     }
 
-    public MessageLink(long globalAccountId, int localAccountId, long dialogId, int messageId) {
-        this.globalAccountId = globalAccountId;
+    public MessageLink(long mtprotoAccountId, int localAccountId, long dialogId, int messageId) {
+        this.mtprotoAccountId = mtprotoAccountId;
         this.localAccountId = localAccountId;
         this.dialogId = dialogId;
         this.messageId = messageId;
     }
 
-    public long getGlobalAccountId() {
-        return globalAccountId;
+    public long getMtprotoAccountId() {
+        return mtprotoAccountId;
     }
 
     public int getLocalAccountId() {
@@ -53,7 +53,7 @@ public class MessageLink {
         return messageId;
     }
 
-    public MessageObject getMessageObject(){
+    public MessageObject getMessageObject() {
         int accNum = this.localAccountId;
         MessagesStorage messagesStorage = MessagesStorage.getInstance(accNum); //account id is a part of path to the music
 
@@ -66,7 +66,7 @@ public class MessageLink {
         return result;
     }
 
-    public MusicMessageObjectAdapterInterface getMessageSource(){
+    public MusicMessageObjectAdapterInterface getMessageSource() {
         MessageObject messageObject = getMessageObject();
         MusicMessageObjectAdapterInterface messageSource = new MessageObjectAdapter(messageObject);
         return messageSource;
@@ -77,22 +77,22 @@ public class MessageLink {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         MessageLink that = (MessageLink) o;
-        return localAccountId == that.localAccountId &&
-                globalAccountId == that.globalAccountId &&
+        return mtprotoAccountId == that.mtprotoAccountId &&
+                localAccountId == that.localAccountId &&
                 dialogId == that.dialogId &&
                 messageId == that.messageId;
     }
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(globalAccountId, localAccountId, dialogId, messageId);
+        return java.util.Objects.hash(mtprotoAccountId, localAccountId, dialogId, messageId);
     }
 
     @NonNull
     @Override
     public String toString() {
         return "MessageLink{" +
-                "globalAccountId=" + globalAccountId +
+                "mtprotoAccountId=" + mtprotoAccountId +
                 ", localAccountId=" + localAccountId +
                 ", chatId=" + dialogId +
                 ", messageId=" + messageId +

@@ -26,20 +26,22 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MediaController;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
+import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.extended_music_player.GlobalMusicControllerImpl;
 import org.telegram.messenger.extended_music_player.entity.Playlist;
 import org.telegram.messenger.extended_music_player.entity.music.MusicData;
 import org.telegram.messenger.extended_music_player.entity.music.MusicMetaData;
+import org.telegram.messenger.extended_music_player.entity.music.ResolvedMusicData;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeDescription;
+import org.telegram.ui.Cells.AudioPlayerCell;
 import org.telegram.ui.Components.EmptyTextProgressView;
 import org.telegram.ui.Components.FragmentContextView;
 import org.telegram.ui.Components.LayoutHelper;
@@ -60,6 +62,7 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
     private FrameLayout fragmentContextViewWrapper;
 
     private final ArrayList<MusicData> musics = new ArrayList<>();
+    private final ArrayList<MessageObject> musicMessageObjects = new ArrayList<>();
 
     private int playlistId;
     private String playlistName;
@@ -94,6 +97,13 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.musicReceiveMusicFromPlaylist);
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.musicDatabaseError);
 
+        //todo review the code below, may be optimized
+        for (int account = 0; account < UserConfig.MAX_ACCOUNT_COUNT; account++) {
+            NotificationCenter.getInstance(account).addObserver(this, NotificationCenter.messagePlayingDidStart);
+            NotificationCenter.getInstance(account).addObserver(this, NotificationCenter.messagePlayingPlayStateChanged);
+            NotificationCenter.getInstance(account).addObserver(this, NotificationCenter.messagePlayingDidReset);
+        }
+
         globalMusicController = GlobalMusicControllerImpl.getInstance();
         globalMusicController.getMusicsByPlaylistId(playlistId);
         return true;
@@ -104,6 +114,13 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
         super.onFragmentDestroy();
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.musicReceiveMusicFromPlaylist);
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.musicDatabaseError);
+
+        //todo review the code below, may be optimized
+        for (int account = 0; account < UserConfig.MAX_ACCOUNT_COUNT; account++) {
+            NotificationCenter.getInstance(account).removeObserver(this, NotificationCenter.messagePlayingDidStart);
+            NotificationCenter.getInstance(account).removeObserver(this, NotificationCenter.messagePlayingPlayStateChanged);
+            NotificationCenter.getInstance(account).removeObserver(this, NotificationCenter.messagePlayingDidReset);
+        }
     }
 
     @Override
@@ -141,7 +158,7 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
         listView.setLayoutManager(layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
         listView.setAdapter(listAdapter = new MusicAdapter(context));
         listView.setEmptyView(emptyView);
-        listView.setOnItemClickListener((view, position) -> playMusicAt(position));
+        listView.setOnItemClickListener(this::onMusicClicked);
         actionBar.setAdaptiveBackground(listView);
         frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT));
 
@@ -169,12 +186,18 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
     @Override
     public void didReceivedNotification(int id, int account, Object... args) {
         if (id == NotificationCenter.musicReceiveMusicFromPlaylist) {
+            if (args.length < 2 || !(args[0] instanceof Integer) || (Integer) args[0] != playlistId) {
+                return;
+            }
             loading = false;
             musics.clear();
-            if (args.length > 0 && args[0] instanceof ArrayList<?>) {
-                for (Object item : (ArrayList<?>) args[0]) {
-                    if (item instanceof MusicData) {
-                        musics.add((MusicData) item);
+            musicMessageObjects.clear();
+            if (args[1] instanceof ArrayList<?>) {
+                for (Object item : (ArrayList<?>) args[1]) {
+                    if (item instanceof ResolvedMusicData) {
+                        ResolvedMusicData resolvedMusic = (ResolvedMusicData) item;
+                        musics.add(resolvedMusic.getMusicData());
+                        musicMessageObjects.add(resolvedMusic.getMessageObject());
                     }
                 }
             }
@@ -190,6 +213,8 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
             if (getParentActivity() != null && args.length > 0) {
                 Toast.makeText(getParentActivity(), LocaleController.formatString(R.string.playlist_error_message, String.valueOf(args[0])), Toast.LENGTH_SHORT).show();
             }
+        } else if (id == NotificationCenter.messagePlayingDidStart || id == NotificationCenter.messagePlayingPlayStateChanged || id == NotificationCenter.messagePlayingDidReset) {
+            updateVisibleAudioPlayerCells();
         }
     }
 
@@ -226,23 +251,42 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
         return musics.get(position);
     }
 
+    private MessageObject getMessageObjectAt(int position) {
+        if (position < 0 || position >= musicMessageObjects.size()) {
+            return null;
+        }
+        return musicMessageObjects.get(position);
+    }
+
+    private void onMusicClicked(View view, int position) {
+        MessageObject messageObject = getMessageObjectAt(position);
+        if (!(view instanceof AudioPlayerCell) || messageObject == null || !messageObject.isMusic()) {
+            return;
+        }
+
+        MediaController mediaController = MediaController.getInstance();
+        if (mediaController.isPlayingMessage(messageObject) && !mediaController.isMessagePaused()) {
+            mediaController.pauseMessage(messageObject);
+        } else if (isCurrentPlaylistDetailedPlaylist()) {
+            ((AudioPlayerCell) view).didPressedButton();
+        } else {
+            playMusicAt(position);
+        }
+    }
+
     private void playMusicAt(int position) {
-        MusicData selectedMusic = getMusicAt(position);
-        if (selectedMusic == null) {
+        MessageObject selectedMessageObject = getMessageObjectAt(position);
+        if (selectedMessageObject == null || !selectedMessageObject.isMusic()) {
             return;
         }
 
         ArrayList<MessageObject> playlist = new ArrayList<>();
-        MessageObject selectedMessageObject = null;
         for (int i = 0; i < musics.size(); i++) {
-            MessageObject messageObject = getMessageObject(musics.get(i));
+            MessageObject messageObject = getMessageObjectAt(i);
             if (messageObject == null || !messageObject.isMusic()) {
                 continue;
             }
             playlist.add(messageObject);
-            if (i == position) {
-                selectedMessageObject = messageObject;
-            }
         }
 
         if (selectedMessageObject == null || playlist.isEmpty()) {
@@ -265,13 +309,56 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
         }
     }
 
-    private MessageObject getMessageObject(MusicData music) {
-        try {
-            return music.getMessageLink().getMessageObject();
-        } catch (Exception e) {
-            FileLog.e(e);
+    private boolean isCurrentPlaylistDetailedPlaylist() {
+        ArrayList<MessageObject> currentPlaylist = MediaController.getInstance().getPlaylist();
+        if (currentPlaylist.size() != getAvailableMusicCount()) {
+            return false;
         }
-        return null;
+        for (int i = 0; i < musicMessageObjects.size(); i++) {
+            MessageObject expectedMessageObject = musicMessageObjects.get(i);
+            if (expectedMessageObject == null || !expectedMessageObject.isMusic()) {
+                continue;
+            }
+            boolean found = false;
+            for (int j = 0; j < currentPlaylist.size(); j++) {
+                if (isSameMusicMessage(expectedMessageObject, currentPlaylist.get(j))) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private int getAvailableMusicCount() {
+        int count = 0;
+        for (int i = 0; i < musicMessageObjects.size(); i++) {
+            MessageObject messageObject = musicMessageObjects.get(i);
+            if (messageObject != null && messageObject.isMusic()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static boolean isSameMusicMessage(MessageObject first, MessageObject second) {
+        return first != null && second != null && first.currentAccount == second.currentAccount && first.getDialogId() == second.getDialogId() && first.getId() == second.getId();
+    }
+
+    private void updateVisibleAudioPlayerCells() {
+        if (listView == null) {
+            return;
+        }
+        int count = listView.getChildCount();
+        for (int i = 0; i < count; i++) {
+            View child = listView.getChildAt(i);
+            if (child instanceof AudioPlayerCell) {
+                ((AudioPlayerCell) child).updateButtonState(false, true);
+            }
+        }
     }
 
     @Override
@@ -288,8 +375,10 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
                 int count = listView.getChildCount();
                 for (int i = 0; i < count; i++) {
                     View child = listView.getChildAt(i);
-                    if (child instanceof MusicCell) {
-                        ((MusicCell) child).updateColors();
+                    if (child instanceof MusicErrorCell) {
+                        ((MusicErrorCell) child).updateColors();
+                    } else if (child instanceof AudioPlayerCell) {
+                        child.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
                     }
                 }
             }
@@ -310,16 +399,28 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
         themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_ITEMSCOLOR, null, null, null, null, Theme.key_actionBarDefaultIcon));
         themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_TITLECOLOR, null, null, null, null, Theme.key_actionBarDefaultTitle));
         themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SELECTORCOLOR, null, null, null, null, Theme.key_actionBarDefaultSelector));
-        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{MusicCell.class}, null, null, cellDelegate, Theme.key_windowBackgroundWhite));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{MusicCell.class}, new String[]{"titleTextView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{MusicCell.class}, new String[]{"subtitleTextView", "durationTextView"}, null, null, null, Theme.key_windowBackgroundWhiteGrayText3));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{MusicCell.class}, new String[]{"imageView"}, null, null, cellDelegate, Theme.key_featuredStickers_addButton));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{MusicCell.class}, null, null, cellDelegate, Theme.key_divider));
+        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{MusicErrorCell.class}, null, null, cellDelegate, Theme.key_windowBackgroundWhite));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{MusicErrorCell.class}, new String[]{"titleTextView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{MusicErrorCell.class}, new String[]{"subtitleTextView", "durationTextView"}, null, null, null, Theme.key_windowBackgroundWhiteGrayText3));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{MusicErrorCell.class}, new String[]{"imageView"}, null, null, cellDelegate, Theme.key_chats_sentErrorIcon));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{MusicErrorCell.class}, null, null, cellDelegate, Theme.key_divider));
+        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{AudioPlayerCell.class}, null, null, cellDelegate, Theme.key_windowBackgroundWhite));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{AudioPlayerCell.class}, null, null, null, Theme.key_chat_inLoader));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{AudioPlayerCell.class}, null, null, null, Theme.key_chat_outLoader));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{AudioPlayerCell.class}, null, null, null, Theme.key_chat_inLoaderSelected));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{AudioPlayerCell.class}, null, null, null, Theme.key_chat_inMediaIcon));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{AudioPlayerCell.class}, null, null, null, Theme.key_chat_inMediaIconSelected));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{AudioPlayerCell.class}, null, null, null, Theme.key_windowBackgroundWhiteGrayText2));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{AudioPlayerCell.class}, null, null, null, Theme.key_chat_inAudioSelectedProgress));
+        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{AudioPlayerCell.class}, null, null, null, Theme.key_chat_inAudioProgress));
 
         return themeDescriptions;
     }
 
     private class MusicAdapter extends RecyclerListView.SelectionAdapter {
+
+        private static final int VIEW_TYPE_UNAVAILABLE = 0;
+        private static final int VIEW_TYPE_AUDIO = 1;
 
         private final Context context;
 
@@ -329,7 +430,7 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
 
         @Override
         public boolean isEnabled(RecyclerView.ViewHolder holder) {
-            return true;
+            return holder.itemView instanceof AudioPlayerCell;
         }
 
         @Override
@@ -337,23 +438,38 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
             return musics.size();
         }
 
+        @Override
+        public int getItemViewType(int position) {
+            return getMessageObjectAt(position) != null ? VIEW_TYPE_AUDIO : VIEW_TYPE_UNAVAILABLE;
+        }
+
         @NonNull
         @Override
         public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            return new RecyclerListView.Holder(new MusicCell(context, resourceProvider));
+            if (viewType == VIEW_TYPE_AUDIO) {
+                return new RecyclerListView.Holder(new AudioPlayerCell(context, AudioPlayerCell.VIEW_TYPE_DEFAULT, resourceProvider));
+            }
+            return new RecyclerListView.Holder(new MusicErrorCell(context, resourceProvider));
         }
 
         @Override
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
             MusicData music = getMusicAt(position);
-            if (music != null) {
-                ((MusicCell) holder.itemView).setMusic(music, position != getItemCount() - 1);
+            if (holder.itemView instanceof AudioPlayerCell) {
+                MessageObject messageObject = getMessageObjectAt(position);
+                if (messageObject != null) {
+                    AudioPlayerCell cell = (AudioPlayerCell) holder.itemView;
+                    cell.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    cell.setMessageObject(messageObject, false, null, position != getItemCount() - 1, null);
+                }
+            } else if (music != null) {
+                ((MusicErrorCell) holder.itemView).setMusic(music, position != getItemCount() - 1);
             }
         }
     }
 
     @SuppressLint("ViewConstructor")
-    private static class MusicCell extends FrameLayout {
+    private static class MusicErrorCell extends FrameLayout {
 
         private final TextView titleTextView;
         private final TextView subtitleTextView;
@@ -364,7 +480,7 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
         private final Theme.ResourcesProvider resourcesProvider;
         private boolean needDivider;
 
-        private MusicCell(Context context, Theme.ResourcesProvider resourcesProvider) {
+        private MusicErrorCell(Context context, Theme.ResourcesProvider resourcesProvider) {
             super(context);
             this.resourcesProvider = resourcesProvider;
             setLayoutParams(new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -376,7 +492,7 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
 
             imageView = new ImageView(context);
             imageView.setScaleType(ImageView.ScaleType.CENTER);
-            imageView.setImageResource(R.drawable.files_music);
+            imageView.setImageResource(R.drawable.list_warning_sign);
             iconBackground.addView(imageView, LayoutHelper.createFrame(26, 26, Gravity.CENTER));
 
             titleTextView = new TextView(context);
@@ -411,7 +527,7 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
             titleTextView.setText(title);
             subtitleTextView.setText(performer);
             durationTextView.setText(getDuration(metaData));
-            setContentDescription(LocaleController.formatString("AccDescrMusicInfo", R.string.AccDescrMusicInfo, performer, title));
+            setContentDescription(LocaleController.formatString("AccDescrMusicInfo", R.string.AccDescrMusicInfo, performer, title) + ", " + LocaleController.getString(R.string.Unavailable));
             needDivider = divider;
             invalidate();
         }
@@ -448,11 +564,11 @@ public class DetailedPlaylistActivity extends BaseFragment implements Notificati
         private void updateColors() {
             setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));
             if (iconBackground != null) {
-                Drawable background = Theme.createRoundRectDrawable(dp(14), ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), 34));
+                Drawable background = Theme.createRoundRectDrawable(dp(14), ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_chats_sentErrorIcon, resourcesProvider), 34));
                 iconBackground.setBackground(background);
             }
             if (imageView != null) {
-                imageView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), PorterDuff.Mode.SRC_IN));
+                imageView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_chats_sentErrorIcon, resourcesProvider), PorterDuff.Mode.SRC_IN));
             }
             if (titleTextView != null) {
                 titleTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));

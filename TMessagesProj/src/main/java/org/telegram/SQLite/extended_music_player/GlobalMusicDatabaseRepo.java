@@ -18,6 +18,7 @@ public interface GlobalMusicDatabaseRepo {
     MusicData getMusicFromLibraryById(int id) throws SQLiteException;
     ArrayList<MusicData> getAllMusicFromLibrary() throws SQLiteException;
     void addMusicToPlaylist(int playlistId, MusicData music) throws SQLiteException;
+    ArrayList<MusicData> getMusicDataByPlaylistId(int playlistId) throws SQLiteException;
     ArrayList<MessageLink> getMusicLinksByPlaylistId(int playlistId) throws SQLiteException;
 
     void markPlaylistAsRecent(int playlistId, long timestamp) throws SQLiteException;

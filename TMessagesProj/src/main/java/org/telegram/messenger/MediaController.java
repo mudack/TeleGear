@@ -2520,7 +2520,11 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     private boolean isSamePlayingMessage(MessageObject messageObject) {
-        return playingMessageObject != null && playingMessageObject.getDialogId() == messageObject.getDialogId() && playingMessageObject.getId() == messageObject.getId() && ((playingMessageObject.eventId == 0) == (messageObject.eventId == 0));
+        return isSameMessageIdentity(playingMessageObject, messageObject);
+    }
+
+    static boolean isSameMessageIdentity(MessageObject first, MessageObject second) {
+        return first != null && second != null && first.currentAccount == second.currentAccount && first.getDialogId() == second.getDialogId() && first.getId() == second.getId() && ((first.eventId == 0) == (second.eventId == 0));
     }
 
     public boolean seekToProgress(MessageObject messageObject, float progress) {
@@ -2987,7 +2991,7 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
         if (playingMessageObject == null || !playingMessageObject.isMusic()) {
             return;
         }
-        checkIsNextMusicFileDownloaded(playingMessageObject.currentAccount);
+        checkIsNextMusicFileDownloaded();
     }
 
     private void checkIsNextVoiceFileDownloaded(int currentAccount) {
@@ -3009,10 +3013,7 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
         }
     }
 
-    private void checkIsNextMusicFileDownloaded(int currentAccount) {
-        if (!DownloadController.getInstance(currentAccount).canDownloadNextTrack()) {
-            return;
-        }
+    private void checkIsNextMusicFileDownloaded() {
         ArrayList<MessageObject> currentPlayList = SharedConfig.shuffleMusic ? shuffledPlaylist : playlist;
         if (currentPlayList == null || currentPlayList.size() < 2) {
             return;
@@ -3034,6 +3035,10 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
         }
 
         MessageObject nextAudio = currentPlayList.get(nextIndex);
+        int nextAccount = nextAudio.currentAccount;
+        if (!DownloadController.getInstance(nextAccount).canDownloadNextTrack()) {
+            return;
+        }
         File file = null;
         if (!TextUtils.isEmpty(nextAudio.messageOwner.attachPath)) {
             file = new File(nextAudio.messageOwner.attachPath);
@@ -3041,10 +3046,10 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
                 file = null;
             }
         }
-        final File cacheFile = file != null ? file : FileLoader.getInstance(currentAccount).getPathToMessage(nextAudio.messageOwner);
+        final File cacheFile = file != null ? file : FileLoader.getInstance(nextAccount).getPathToMessage(nextAudio.messageOwner);
         boolean exist = cacheFile.exists();
         if (cacheFile != file && !cacheFile.exists() && nextAudio.isMusic()) {
-            FileLoader.getInstance(currentAccount).loadFile(nextAudio.getDocument(), nextAudio, FileLoader.PRIORITY_LOW, nextAudio.shouldEncryptPhotoOrVideo() ? 2 : 0);
+            FileLoader.getInstance(nextAccount).loadFile(nextAudio.getDocument(), nextAudio, FileLoader.PRIORITY_LOW, nextAudio.shouldEncryptPhotoOrVideo() ? 2 : 0);
         }
     }
 
@@ -3625,7 +3630,7 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
             downloadingCurrentMessage = false;
         }
         if (messageObject.isMusic()) {
-            checkIsNextMusicFileDownloaded(messageObject.currentAccount);
+            checkIsNextMusicFileDownloaded();
         } else {
             checkIsNextVoiceFileDownloaded(messageObject.currentAccount);
         }

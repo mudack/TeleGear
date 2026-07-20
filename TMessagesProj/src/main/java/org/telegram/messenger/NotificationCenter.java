@@ -381,7 +381,7 @@ public class NotificationCenter {
     //Extended player constants
     public static final int musicPlaylistCreated = totalEvents++; //sends new playlist name
     public static final int musicLoadListOfPlaylist = totalEvents++; //sends ArrayList<Playlist>
-    public static final int musicReceiveMusicFromPlaylist = totalEvents++; //send ArrayList<MusicData>
+    public static final int musicReceiveMusicFromPlaylist = totalEvents++; // sends playlistId and ArrayList<ResolvedMusicData>
     public static final int musicAddedToPlaylist = totalEvents++; // sends playlistName and musicName
     public static final int musicDatabaseError = totalEvents++; //sends messageError
     public static final int localAccountIdFromMappingTable = totalEvents++; //sends int (local id from db by mtprotoAccountId)

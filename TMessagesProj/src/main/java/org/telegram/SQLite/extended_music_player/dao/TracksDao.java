@@ -59,11 +59,11 @@ public class TracksDao {
         MusicMetaData metaData = music.getMusicMetaData();
         MessageLink link = music.getMessageLink();
 
-        long globalAccountId = link.getGlobalAccountId();
+        long mtprotoAccountId = link.getMtprotoAccountId();
         long dialogId = link.getDialogId();
         int msgId = link.getMessageId();
 
-        state.bindLong(1, globalAccountId);
+        state.bindLong(1, mtprotoAccountId);
         state.bindLong(2, dialogId);
         state.bindInteger(3, msgId);
 
@@ -79,7 +79,7 @@ public class TracksDao {
                         DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID + "=? AND " +
                         DB_TRACKS_COLUMN_NAME_DIALOG_ID + "=? AND " +
                         DB_TRACKS_COLUMN_NAME_MESSAGE_ID + "=?",
-                globalAccountId,
+                mtprotoAccountId,
                 dialogId,
                 msgId
         );
@@ -260,12 +260,16 @@ public class TracksDao {
     }
 
 
-    public ArrayList<MessageLink> getMusicLinksByPlaylistId(int playlistId) throws SQLiteException {
-        ArrayList<MessageLink> result = new ArrayList<>();
+    public ArrayList<MusicData> getMusicDataByPlaylistId(int playlistId) throws SQLiteException {
+        ArrayList<MusicData> result = new ArrayList<>();
         SQLiteCursor cursor = database.queryFinalized(
                 "SELECT t." + DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID + ", " +
                         "t." + DB_TRACKS_COLUMN_NAME_DIALOG_ID + ", " +
                         "t." + DB_TRACKS_COLUMN_NAME_MESSAGE_ID + ", " +
+                        "t." + DB_TRACKS_COLUMN_NAME_MUSIC_TITLE + ", " +
+                        "t." + DB_TRACKS_COLUMN_NAME_MUSIC_FILE_NAME + ", " +
+                        "t." + DB_TRACKS_COLUMN_NAME_MUSIC_PERFORMER + ", " +
+                        "t." + DB_TRACKS_COLUMN_NAME_DURATION_SEC + ", " +
                         "a." + DB_ACC_IDS_MAPPING_COLUMN_NAME_LOCAL_ID + " " +
                         "FROM " + DB_TRACKS_TABLE_NAME + " t " +
                         "INNER JOIN " + DB_PT_TABLE_NAME + " pt ON t." + DB_TRACKS_COLUMN_NAME_UID + " = pt." + DB_PT_COLUMN_NAME_TRACK_UID + " " +
@@ -279,40 +283,48 @@ public class TracksDao {
                         "t." + DB_TRACKS_COLUMN_NAME_UID + " ASC",
                 playlistId
         );
-//        SQLiteCursor cursor = database.queryFinalized(
-//                "SELECT t." + DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID + ", " +
-//                        "t." + DB_TRACKS_COLUMN_NAME_DIALOG_ID + ", " +
-//                        "t." + DB_TRACKS_COLUMN_NAME_MESSAGE_ID + " " +
-//                        "FROM " + DB_TRACKS_TABLE_NAME + " t " +
-//                        "INNER JOIN " + DB_PT_TABLE_NAME + " pt ON t." + DB_TRACKS_COLUMN_NAME_UID + " = pt." + DB_PT_COLUMN_NAME_TRACK_UID + " " +
-//                        "WHERE pt." + DB_PT_COLUMN_NAME_PLAYLIST_UID + " = ?",
-//                playlistId
-//        );
 
-        while (cursor.next()) {   
+        while (cursor.next()) {
         /* documentation
             0 - DB_TRACKS_COLUMN_NAME_GLOBAL_ACC_ID
             1 - DB_TRACKS_COLUMN_NAME_DIALOG_ID
             2 - DB_TRACKS_COLUMN_NAME_MESSAGE_ID
-            3 - DB_ACC_IDS_MAPPING_COLUMN_NAME_LOCAL_ID
+            3 - DB_TRACKS_COLUMN_NAME_MUSIC_TITLE
+            4 - DB_TRACKS_COLUMN_NAME_MUSIC_FILE_NAME
+            5 - DB_TRACKS_COLUMN_NAME_MUSIC_PERFORMER
+            6 - DB_TRACKS_COLUMN_NAME_DURATION_SEC
+            7 - DB_ACC_IDS_MAPPING_COLUMN_NAME_LOCAL_ID
          */
 
             long globalUserId = cursor.longValue(0);
             long dialogId = cursor.longValue(1);
             int messageId = cursor.intValue(2);
-            int localAccId = UtilDao.getIntOrNullObject(cursor, 3);
+            String title = cursor.stringValue(3);
+            String fileName = cursor.stringValue(4);
+            String performer = cursor.stringValue(5);
+            double durationInSec = cursor.doubleValue(6);
+            int localAccId = UtilDao.getIntOrNullObject(cursor, 7);
             MessageLink link = new MessageLink(
                     globalUserId,
                     localAccId,
                     dialogId,
                     messageId
             );
-            result.add(link);
+            result.add(new MusicData(link, new MusicMetaData(title, fileName, performer, durationInSec)));
 
         }
 
         cursor.dispose();
 
+        return result;
+    }
+
+    public ArrayList<MessageLink> getMusicLinksByPlaylistId(int playlistId) throws SQLiteException {
+        ArrayList<MusicData> musicData = getMusicDataByPlaylistId(playlistId);
+        ArrayList<MessageLink> result = new ArrayList<>(musicData.size());
+        for (MusicData music : musicData) {
+            result.add(music.getMessageLink());
+        }
         return result;
     }
 
