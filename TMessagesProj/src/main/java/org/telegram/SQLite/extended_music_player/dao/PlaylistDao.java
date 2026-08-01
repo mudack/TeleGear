@@ -3,6 +3,7 @@ package org.telegram.SQLite.extended_music_player.dao;
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.SQLite.SQLiteException;
 import org.telegram.SQLite.SQLitePreparedStatement;
+import org.telegram.SQLite.extended_music_player.PlaylistAlreadyExistsException;
 import org.telegram.messenger.extended_music_player.entity.Playlist;
 
 import java.util.ArrayList;
@@ -26,10 +27,21 @@ public class PlaylistDao {
 
 
     public Playlist createPlaylist(String name) throws SQLiteException {
+        return createPlaylist(name, false);
+    }
+
+    public Playlist createPlaylistStrict(String name) throws SQLiteException {
+        return createPlaylist(name, true);
+    }
+
+    private Playlist createPlaylist(String name, boolean failIfExists) throws SQLiteException {
         String playlistName = validatePlaylistName(name);
+        if (failIfExists && playlistNameExists(playlistName, -1)) {
+            throw new PlaylistAlreadyExistsException(playlistName);
+        }
         int orderIndex = getNextOrderIndex();
         SQLitePreparedStatement state = database.executeFast(
-                "INSERT OR IGNORE INTO " + DB_PLAYLISTS_TABLE_NAME + " (" +
+                (failIfExists ? "INSERT INTO " : "INSERT OR IGNORE INTO ") + DB_PLAYLISTS_TABLE_NAME + " (" +
                         DB_PLAYLISTS_COLUMN_NAME_PLAYLIST_NAME + ", " +
                         DB_PLAYLISTS_COLUMN_NAME_ORDER_INDEX +
                         ") VALUES (?, ?)"
@@ -38,7 +50,15 @@ public class PlaylistDao {
         state.requery();
         state.bindString(1, playlistName);
         state.bindInteger(2, orderIndex);
-        state.step();
+        try {
+            state.step();
+        } catch (SQLiteException e) {
+            state.dispose();
+            if (failIfExists && playlistNameExists(playlistName, -1)) {
+                throw new PlaylistAlreadyExistsException(playlistName);
+            }
+            throw e;
+        }
         state.dispose();
 
         SQLiteCursor cursor = database.queryFinalized(

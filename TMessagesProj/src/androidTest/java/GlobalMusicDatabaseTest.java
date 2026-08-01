@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.telegram.SQLite.SQLiteException;
 import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepo;
 import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepoImpl;
+import org.telegram.SQLite.extended_music_player.PlaylistAlreadyExistsException;
 import org.telegram.SQLite.extended_music_player.dao.UtilDao;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.extended_music_player.entity.MessageLink;
@@ -59,6 +60,37 @@ public class GlobalMusicDatabaseTest {
         ArrayList<Playlist> list = db.getAllPlaylists();
 
         assertEquals(1, list.size());
+    }
+
+    @Test
+    public void testCreatePlaylistAndAddMusic() throws Exception {
+        MusicData music = createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 12L, 34);
+
+        Playlist playlist = db.createPlaylistAndAddMusic("MyPlaylist", music);
+
+        assertNotNull(playlist);
+        assertEquals("MyPlaylist", playlist.getName());
+        ArrayList<MessageLink> links = db.getMusicLinksByPlaylistId(playlist.getId());
+        assertEquals(1, links.size());
+        MessageLink link = links.get(0);
+        assertEquals(music.getMessageLink().getMtprotoAccountId(), link.getMtprotoAccountId());
+        assertEquals(music.getMessageLink().getDialogId(), link.getDialogId());
+        assertEquals(music.getMessageLink().getMessageId(), link.getMessageId());
+    }
+
+    @Test
+    public void testCreatePlaylistAndAddMusic_exceptionDuplicateNameDoesNotAddMusic() throws Exception {
+        Playlist playlist = db.createPlaylistAndAddMusic("MyPlaylist", createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 12L, 34));
+
+        try {
+            db.createPlaylistAndAddMusic("MyPlaylist", createTestMusic(TEST_GLOBAL_ACC_ID_1, 1, 56L, 78));
+            fail("Expected PlaylistAlreadyExistsException");
+        } catch (PlaylistAlreadyExistsException expected) {
+            assertEquals(1, db.getAllPlaylists().size());
+            ArrayList<MessageLink> links = db.getMusicLinksByPlaylistId(playlist.getId());
+            assertEquals(1, links.size());
+            assertEquals(34, links.get(0).getMessageId());
+        }
     }
 
     @Test

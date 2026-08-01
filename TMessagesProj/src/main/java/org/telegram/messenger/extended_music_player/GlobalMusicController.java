@@ -6,9 +6,16 @@ import org.telegram.messenger.extended_music_player.entity.music.MusicData;
 import java.util.ArrayList;
 
 public interface GlobalMusicController {
+    interface CreatePlaylistAndAddMusicCallback {
+        void onSuccess(Playlist playlist);
+        void onPlaylistAlreadyExists();
+        void onError(Exception e);
+    }
+
     void addListener(RecentPlaylistListener recentPlaylistListener);
     void removeListener(RecentPlaylistListener recentPlaylistListener);
     void createPlaylist(String name);
+    void createPlaylistAndAddMusic(String name, MusicData music, CreatePlaylistAndAddMusicCallback callback);
     void getAllPlaylists(); //should emit ArrayList<Playlist>
     void renamePlaylist(int playlistId, String name);
     void deletePlaylist(int playlistId);

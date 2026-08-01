@@ -10539,6 +10539,7 @@
     <string name="playlist_new_playlist_dialog_et_hint">Enter new playlist name</string>
     <string name="playlist_error_message">Error: %s</string>
     <string name="playlist_error_message_empty_playlist_name">Playlist name can\'t be empty</string>
+    <string name="playlist_error_message_playlist_already_exists">Playlist already exists</string>
     <string name="playlist_rename_playlist">Rename Playlist</string>
     <string name="playlist_delete_playlist">Delete Playlist</string>
     <string name="playlist_delete_playlist_confirm">Are you sure you want to delete playlist: %s?</string>

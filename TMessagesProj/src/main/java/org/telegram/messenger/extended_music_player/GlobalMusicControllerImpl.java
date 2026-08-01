@@ -7,6 +7,7 @@ import androidx.annotation.UiThread;
 import org.telegram.SQLite.SQLiteException;
 import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepo;
 import org.telegram.SQLite.extended_music_player.GlobalMusicDatabaseRepoImpl;
+import org.telegram.SQLite.extended_music_player.PlaylistAlreadyExistsException;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.DispatchQueue;
@@ -116,6 +117,43 @@ public class GlobalMusicControllerImpl implements GlobalMusicController {
                     NotificationCenter.getGlobalInstance().postNotificationName(
                             NotificationCenter.musicDatabaseError,
                             "Can't create playlist with name: " + name + " due " + e.getMessage()
+                    );
+                });
+            }
+        });
+    }
+
+    @Override
+    public void createPlaylistAndAddMusic(String name, MusicData music, CreatePlaylistAndAddMusicCallback callback) {
+        storageQueue.postRunnable(() -> {
+            try {
+                Playlist playlist = databaseRepo.createPlaylistAndAddMusic(name, music);
+                AndroidUtilities.runOnUIThread(() -> {
+                    addPlaylistToRecent(playlist);
+                    NotificationCenter.getGlobalInstance().postNotificationName(
+                            NotificationCenter.musicPlaylistCreated,
+                            playlist.getName()
+                    );
+                    if (callback != null) {
+                        callback.onSuccess(playlist);
+                    }
+                });
+            } catch (PlaylistAlreadyExistsException e) {
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (callback != null) {
+                        callback.onPlaylistAlreadyExists();
+                    }
+                });
+            } catch (SQLiteException e) {
+                FileLog.e(e);
+                e.printStackTrace();
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (callback != null) {
+                        callback.onError(e);
+                    }
+                    NotificationCenter.getGlobalInstance().postNotificationName(
+                            NotificationCenter.musicDatabaseError,
+                            "Can't create playlist and add music with title " + music.getMusicMetaData().getTitle() + " due " + e.getMessage()
                     );
                 });
             }

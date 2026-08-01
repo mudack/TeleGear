@@ -85,6 +85,13 @@ public class GlobalMusicDatabaseRepoImpl implements GlobalMusicDatabaseRepo {
     }
 
     @Override
+    public Playlist createPlaylistAndAddMusic(String name, MusicData music) throws SQLiteException {
+        Playlist playlist = playlistDao.createPlaylistStrict(name);
+        addMusicToPlaylist(playlist.getId(), music);
+        return playlist;
+    }
+
+    @Override
     public ArrayList<Playlist> getAllPlaylists() throws SQLiteException {
         return playlistDao.getAllPlaylists();
     }

@@ -69,7 +69,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.util.Consumer;
 import com.google.android.gms.cast.framework.CastContext;
 
 import org.telegram.messenger.AndroidUtilities;
@@ -284,6 +283,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
     };
 
     private final GlobalMusicController globalMusicController = GlobalMusicControllerImpl.getInstance();
+    private boolean observersRemoved;
 
     public AudioPlayerAlert(final Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context, true, resourcesProvider);
@@ -1976,6 +1976,23 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
     @Override
     public void dismiss() {
         super.dismiss();
+        if (!isDismissed()) {
+            return;
+        }
+        removeObservers();
+    }
+
+    @Override
+    public void dismissInternal() {
+        removeObservers();
+        super.dismissInternal();
+    }
+
+    private void removeObservers() {
+        if (observersRemoved) {
+            return;
+        }
+        observersRemoved = true;
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.messagePlayingDidReset);
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.messagePlayingPlayStateChanged);
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.messagePlayingDidStart);
@@ -1986,6 +2003,9 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.moreMusicDidLoad);
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.musicIdsLoaded);
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.messagePlayingSpeedChanged);
+        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.musicDatabaseError);
+        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.musicAddedToPlaylist);
+        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.musicPlaylistCreated);
         DownloadController.getInstance(currentAccount).removeLoadingFileObserver(this);
     }
 
@@ -2825,7 +2845,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
             itemOptionsOfAddToPlaylist.add(
                     R.drawable.ic_add_playlist, getString(R.string.playlist_new_playlist),
                     () -> {
-                        showCreateNewPlayListDialog(getContext(), globalMusicController::createPlaylist);
+                        showCreateNewPlayListDialog(getContext(), musicData);
                         o.dismiss();
                     }
             );
@@ -2940,7 +2960,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
         o.show();
     }
 
-    private void showCreateNewPlayListDialog(Context context, Consumer<String> onCreatePlaylist) {
+    private void showCreateNewPlayListDialog(Context context, MusicData selectedMusic) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
 
         EditTextCell editText = new EditTextCell(context, getString(R.string.playlist_new_playlist_dialog_et_hint), false, false, MAX_LENGTH_OF_PLAYLIST_NAME, resourcesProvider);
@@ -2972,8 +2992,30 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
                 if (newPlaylistName.isEmpty()) {
                     Toast.makeText(context, getString(R.string.playlist_error_message_empty_playlist_name), Toast.LENGTH_SHORT).show();
                 } else {
-                    onCreatePlaylist.accept(newPlaylistName);
-                    dialog.dismiss();
+                    button.setEnabled(false);
+                    globalMusicController.createPlaylistAndAddMusic(newPlaylistName, selectedMusic, new GlobalMusicController.CreatePlaylistAndAddMusicCallback() {
+                        @Override
+                        public void onSuccess(Playlist playlist) {
+                            if (dialog.isShowing()) {
+                                dialog.dismiss();
+                            }
+                        }
+
+                        @Override
+                        public void onPlaylistAlreadyExists() {
+                            if (dialog.isShowing()) {
+                                button.setEnabled(true);
+                                Toast.makeText(context, getString(R.string.playlist_error_message_playlist_already_exists), Toast.LENGTH_SHORT).show();
+                            }
+                        }
+
+                        @Override
+                        public void onError(Exception e) {
+                            if (dialog.isShowing()) {
+                                button.setEnabled(true);
+                            }
+                        }
+                    });
                 }
             });
 

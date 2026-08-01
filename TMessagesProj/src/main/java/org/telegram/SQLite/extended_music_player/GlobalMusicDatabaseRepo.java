@@ -9,6 +9,7 @@ import java.util.ArrayList;
 
 public interface GlobalMusicDatabaseRepo {
     Playlist createPlaylist(String name) throws SQLiteException;
+    Playlist createPlaylistAndAddMusic(String name, MusicData music) throws SQLiteException;
     ArrayList<Playlist> getAllPlaylists() throws SQLiteException;
     Playlist getPlaylistById(int id) throws SQLiteException;
     Playlist renamePlaylist(int id, String name) throws SQLiteException;
